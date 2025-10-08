@@ -1,43 +1,61 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
-# dependencies
+# --- Dependencies / build outputs ---
 node_modules/
-
-# Expo
 .expo/
+.expo-shared/
 dist/
 web-build/
+.npm/
+.yarn/
+.cache/
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.metro-health-check*
+
+# --- OS / editor ---
+.DS_Store
+*.swp
+*.tsbuildinfo
+.vscode/*
+!.vscode/settings.json
+
+# --- Expo / Web ---
 expo-env.d.ts
 
-# Native
-.kotlin/
+# --- Native (Expo managed; keep ignored even if you eject) ---
+ios/
+android/
+Pods/
 *.orig.*
+.kotlin/
+.gradle/
+.cxx/
+
+# --- Signing / credentials (NEVER COMMIT) ---
 *.jks
+*.keystore
 *.p8
 *.p12
 *.key
-*.mobileprovision
-
-# Metro
-.metro-health-check*
-
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
-# macOS
-.DS_Store
 *.pem
+*.crt
+*.cer
+*.csr
+*.mobileprovision
+# Firebase native configs (only used if you eject)
+google-services.json
+GoogleService-Info.plist
+# Firebase admin / service accounts (server-side only)
+serviceAccount*.json
+firebase-adminsdk-*.json
 
-# local env files
-.env*.local
+# --- Local env (DO NOT COMMIT) ---
+.env
+.env.*
+!.env.example   # keep a template in git
 
-# typescript
-*.tsbuildinfo
-
-app-example
-
-# generated native folders
-/ios
-/android
+# --- Optional: large binaries from builds ---
+*.apk
+*.aab
+*.ipa
