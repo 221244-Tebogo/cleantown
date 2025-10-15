@@ -5,7 +5,7 @@ export default {
     scheme: "cleantown",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/icon.png",
+    icon: "./assets/images/logo.png",
     ios: { supportsTablet: true },
     android: {
       adaptiveIcon: {
@@ -13,11 +13,9 @@ export default {
         backgroundColor: "#ffffff",
       },
     },
-    web: { bundler: "metro", favicon: "./assets/favicon.png" },
+    web: { bundler: "metro", favicon: "./assets/images/favicon.png" },
     newArchEnabled: true,
     plugins: [],
-    extra: {
-      
-    },
+    extra: {},
   },
 };

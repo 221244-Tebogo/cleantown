@@ -4,13 +4,11 @@
     "slug": "cleantown-rn",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logo.png",
     "scheme": "cleantownrn",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "ios": {
-      "supportsTablet": true
-    },
+    "ios": { "supportsTablet": true },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -27,22 +25,18 @@
     },
     "plugins": [
       "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#000000"
-          }
-        }
-      ]
+      ["expo-splash-screen", { "image": "./assets/images/splash-icon.png", "imageWidth": 200, "resizeMode": "contain", "backgroundColor": "#ffffff", "dark": { "backgroundColor": "#000000" } }]
     ],
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+    "experiments": { "typedRoutes": true, "reactCompiler": true },
+
+    "extra": {
+      "google": {
+        "expoClientId":    "YOUR_EXPO_CLIENT_ID.apps.googleusercontent.com",
+        "webClientId":     "YOUR_WEB_CLIENT_ID.apps.googleusercontent.com",
+        "iosClientId":     "YOUR_IOS_CLIENT_ID.apps.googleusercontent.com",
+        "androidClientId": "YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com"
+      },
+      "eas": { "projectId": "YOUR_EAS_PROJECT_ID" }
     }
   }
 }
