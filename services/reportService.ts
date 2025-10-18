@@ -1,108 +1,57 @@
-// services/reportService.js
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { db, storage } from "../firebase";
-import {
-  addDoc,
-  collection,
-  serverTimestamp,
-} from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
+import { auth, db, storage } from "../firebase";
 
-const QUEUE_KEY = "offline_report_queue";
+type CreateReportArgs = {
+  coords: { lat: number; lng: number };
+  category: string;
+  note: string;
+  photoUri: string;
+  onProgress?: (pct: number) => void; // 0..100
+};
 
-/** Upload a local image (file://...) to Firebase Storage and return a public URL */
-async function uploadImageAsync(localUri, uid = "anon") {
-  // fetch() works with file:// URIs in Expo and returns a Blob
-  const res = await fetch(localUri);
+export async function createReport({
+  coords,
+  category,
+  note,
+  photoUri,
+  onProgress,
+}: CreateReportArgs) {
+  const uid = auth.currentUser?.uid;
+  if (!uid) throw new Error("Not signed in");
+  if (!photoUri) throw new Error("No photo selected.");
+
+  // URI -> Blob (Expo/Web safe)
+  const res = await fetch(photoUri);
   const blob = await res.blob();
 
-  const key = `reports/${uid}/${Date.now()}.jpg`;
-  const storageRef = ref(storage, key);
+  // Path must match Storage rules: reports/<uid>/<filename>
+  const key = `${Date.now()}.jpg`;
+  const objectRef = ref(storage, `reports/${uid}/${key}`);
 
-  await uploadBytes(storageRef, blob);
-  return await getDownloadURL(storageRef);
-}
-
-/** Create a report (tries online; if upload fails, stores offline for later sync). */
-export async function createReport({ userId, coords, category, photoUri }) {
-  if (!coords || !photoUri) {
-    throw new Error("Photo and coordinates are required.");
-  }
-
-  let photoUrl = null;
-  try {
-    photoUrl = await uploadImageAsync(photoUri, userId || "anon");
-  } catch (e) {
-    // No network / upload failure → queue for later
-    await enqueueOfflineReport({ userId, coords, category, photoUri, when: Date.now() });
-    return { queued: true, message: "No network. Saved to offline queue." };
-  }
-
-  await addDoc(collection(db, "reports"), {
-    userId: userId || null,
-    municipalityId: null,
-    lat: coords.lat,
-    lng: coords.lng,
-    category: category || "mixed",
-    status: "open",
-    submittedAt: serverTimestamp(),
-    photoUrl,
+  const task = uploadBytesResumable(objectRef, blob, {
+    contentType: "image/jpeg",
+  });
+  await new Promise<string>((resolve, reject) => {
+    task.on(
+      "state_changed",
+      (snap) => {
+        const pct = (snap.bytesTransferred / snap.totalBytes) * 100;
+        onProgress?.(Math.round(pct));
+      },
+      reject,
+      async () => resolve(await getDownloadURL(task.snapshot.ref))
+    );
+  }).then(async (downloadURL) => {
+    await addDoc(collection(db, "reports"), {
+      uid,
+      coords,
+      category,
+      note,
+      photoUrl: downloadURL,
+      createdAt: serverTimestamp(),
+    });
   });
 
-  return { queued: false, message: "Report submitted." };
-}
-
-/** ---- Offline Queue helpers ---- */
-export async function enqueueOfflineReport(item) {
-  const raw = await AsyncStorage.getItem(QUEUE_KEY);
-  const arr = raw ? JSON.parse(raw) : [];
-  arr.push(item);
-  await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(arr));
-}
-
-export async function getOfflineQueue() {
-  const raw = await AsyncStorage.getItem(QUEUE_KEY);
-  return raw ? JSON.parse(raw) : [];
-}
-
-export async function clearOfflineQueue() {
-  await AsyncStorage.removeItem(QUEUE_KEY);
-}
-
-/** Try to sync all queued reports (uploads each image then writes Firestore). */
-export async function syncOfflineReports() {
-  const items = await getOfflineQueue();
-  if (!items.length) return { synced: 0 };
-
-  let success = 0;
-  for (const it of items) {
-    // If any single item fails, we stop and keep the rest (avoid losing data)
-    try {
-      const url = await uploadImageAsync(it.photoUri, it.userId || "anon");
-      await addDoc(collection(db, "reports"), {
-        userId: it.userId || null,
-        municipalityId: null,
-        lat: it.coords.lat,
-        lng: it.coords.lng,
-        category: it.category || "mixed",
-        status: "open",
-        submittedAt: serverTimestamp(),
-        photoUrl: url,
-      });
-      success++;
-    } catch (e) {
-      // bail out—keep remaining items in queue
-      break;
-    }
-  }
-
-  if (success === items.length) {
-    await clearOfflineQueue();
-  } else if (success > 0) {
-    // keep the still-unsynced remainder
-    const remainder = items.slice(success);
-    await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(remainder));
-  }
-
-  return { synced: success };
+  return { message: "Report submitted successfully!" };
 }

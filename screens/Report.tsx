@@ -1,177 +1,76 @@
-// screens/report.tsx (updated)
 import * as ImagePicker from "expo-image-picker";
-import * as Location from "expo-location";
-import { useState } from "react";
-import { Image, Pressable, Text, View } from "react-native";
-import { createReport, syncOfflineReports } from "../services/reportService";
-import { Btn, Card, H2, Input, P, Screen } from "../src/ui";
+import React, { useState } from "react";
+import { Alert, Button, Image, Platform, Text, TextInput, View } from "react-native";
+import { auth } from "../firebase";
+import { createReport } from "../services/reportService";
 
-// Feedback kit (use your alias or convert to relative paths if needed)
-// If no alias, e.g. replace "@/components/..." with "../../components/..."
-import BadgePop from "../components/ui/feedback/BadgePop";
-import EcoPointsTicker from "../components/ui/feedback/EcoPointsTicker";
-// import { COLORS } from "../components/ui/feedback/tokens";
-import { useFeedback } from "../components/ui/feedback/useFeedback";
+export default function Report() {
+  const [note, setNote] = useState("");
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [status, setStatus] = useState("");
 
-type Coords = { lat: number; lng: number };
-
-export default function Report({ user }: { user?: { uid?: string } }) {
-  const [photo, setPhoto] = useState<any | null>(null);
-  const [coords, setCoords] = useState<Coords | null>(null);
-  const [category, setCategory] = useState<string>("mixed");
-  const [busy, setBusy] = useState<boolean>(false);
-  const [msg, setMsg] = useState<string>("");
-
-  // feedback
-  const { showPoints, points, badgeTitle } = useFeedback();
-  const [unlocked, setUnlocked] = useState(false);
-
-  const pick = async () => {
-    if (busy) return;
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted") {
-      setMsg("Camera permission required.");
-      return;
-    }
-    const res = await ImagePicker.launchCameraAsync({ quality: 0.5 });
-    if (!res.canceled) setPhoto(res.assets[0]);
+  const getMediaTypes = () => {
+    const anyPicker: any = ImagePicker;
+    return anyPicker?.MediaType?.image ? [anyPicker.MediaType.image] : anyPicker.MediaTypeOptions?.Images;
   };
 
-  const locate = async () => {
-    if (busy) return;
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== "granted") {
-      setMsg("Location permission required.");
-      return;
-    }
-    const pos = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
-    });
-    setCoords({
-      lat: +pos.coords.latitude.toFixed(6),
-      lng: +pos.coords.longitude.toFixed(6),
-    });
-  };
-
-  const submit = async () => {
-    if (!photo || !coords) {
-      setMsg("Photo + location required.");
-      return;
-    }
-    setBusy(true);
+  const pickImage = async () => {
     try {
-      const res = await createReport({
-        userId: user?.uid,
-        coords,
-        category: category?.trim() || "mixed",
-        photoUri: photo.uri,
-      });
-
-      setMsg(res?.message ?? "Report submitted.");
-
-      // success path (not queued/offline)
-      if (!res?.queued) {
-        // 🎉 feedback
-        showPoints(50);              // +50 XP animation
-        setUnlocked(true);           // badge popup
-        setTimeout(() => setUnlocked(false), 1400);
-
-        // reset form
-        setPhoto(null);
-        setCoords(null);
-        setCategory("mixed");
+      if (Platform.OS !== "web") {
+        const lib = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (lib.status !== "granted") {
+          Alert.alert("Permission needed", "We need access to your photos.");
+          return;
+        }
       }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: getMediaTypes(),
+        allowsEditing: true,
+        quality: 0.7,
+      } as any);
+      if (!result.canceled && result.assets?.length > 0) setPhoto(result.assets[0].uri);
     } catch (e: any) {
-      setMsg(e?.message || "Submit failed.");
-    } finally {
-      setBusy(false);
+      Alert.alert("Pick image failed", e?.message || String(e));
     }
   };
 
-  const syncQueue = async () => {
-    if (busy) return;
-    setBusy(true);
+  const handleSubmit = async () => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return Alert.alert("Sign in required", "Please sign in to submit a report.");
+    if (!photo) return Alert.alert("No photo", "Please attach a photo.");
+
+    setStatus("Uploading 0%…");
     try {
-      const { synced } = await syncOfflineReports();
-      setMsg(synced ? `Synced ${synced} pending report(s).` : "No pending items.");
+      await createReport({
+        coords: { lat: -25.746, lng: 28.188 },
+        category: "mixed",
+        note,
+        photoUri: photo,
+        onProgress: (p) => setStatus(`Uploading ${p}%…`),
+      });
+      setStatus("✅ Report submitted successfully!");
+      setNote("");
+      setPhoto(null);
     } catch (e: any) {
-      setMsg("Sync failed: " + (e?.message || "unknown error"));
-    } finally {
-      setBusy(false);
+      console.error(e);
+      setStatus("❌ Failed to submit report.");
+      Alert.alert("Submit failed", e?.message || String(e));
     }
   };
 
   return (
-    <Screen>
-      <Card>
-        <H2>Report Illegal Dumping</H2>
-        <P>Attach a photo and capture your GPS position.</P>
-      </Card>
-
-      <Card>
-        {photo ? (
-          <Image
-            source={{ uri: photo.uri }}
-            style={{ height: 180, borderRadius: 12, marginBottom: 10 }}
-          />
-        ) : null}
-
-        <Btn onPress={pick} style={{ marginBottom: 10 }}>
-          {busy ? "Please wait..." : "Take Photo"}
-        </Btn>
-
-        <Btn onPress={locate} style={{ marginBottom: 10 }}>
-          Use My Location
-        </Btn>
-
-        <Input
-          value={category}
-          onChangeText={setCategory}
-          placeholder="Category (mixed / plastic / cans / rubble)"
-        />
-
-        <View style={{ height: 8 }} />
-
-        {/* Option A: keep your classic button */}
-        <Btn onPress={busy ? undefined : submit}>
-          {busy ? "Submitting..." : "Submit Report"}
-        </Btn>
-
-        {/* Option B: swap to a bursty CTA (uncomment to use)
-        <LeafBurstButton
-          label={busy ? "Submitting..." : "Submit Report"}
-          onPress={busy ? undefined : submit}
-          color={COLORS.primary}
-          size={56}
-        />
-        */}
-
-        <View style={{ height: 8 }} />
-        <Btn onPress={busy ? undefined : syncQueue}>Sync Offline Queue</Btn>
-
-        {coords && <P>lat {coords.lat} · lng {coords.lng}</P>}
-        {!!msg && <P>{msg}</P>}
-
-        {/* Feedback overlays */}
-        {points && <EcoPointsTicker add={points} color={COLORS.primary} />}
-        {unlocked && <BadgePop title="Rookie Eco Hero" />}
-        {badgeTitle && <BadgePop title={badgeTitle} />}
-
-        <Pressable
-  onPress={busy ? undefined : submit}
-  style={{
-    backgroundColor: busy ? "#9AA4AF" : "#2A7390",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    alignItems: "center",
-  }}
->
-  <Text style={{ color: "white", fontWeight: "700" }}>
-    {busy ? "Submitting..." : "Submit Report"}
-  </Text>
-</Pressable>
-      </Card>
-    </Screen>
+    <View style={{ padding: 20 }}>
+      <Text style={{ fontSize: 18, fontWeight: "600" }}>Submit a Report</Text>
+      <TextInput
+        placeholder="Describe the issue..."
+        value={note}
+        onChangeText={setNote}
+        style={{ borderWidth: 1, marginVertical: 10, padding: 8, borderRadius: 5 }}
+      />
+      {photo && <Image source={{ uri: photo }} style={{ width: 200, height: 200, marginVertical: 10 }} />}
+      <Button title="Pick Image" onPress={pickImage} />
+      <Button title="Submit Report" onPress={handleSubmit} />
+      {!!status && <Text style={{ marginTop: 10 }}>{status}</Text>}
+    </View>
   );
 }

@@ -1,5 +1,3 @@
-// services/cleanupService.js
-import { db } from "../firebase";
 import {
   addDoc,
   collection,
@@ -9,6 +7,7 @@ import {
   query,
   serverTimestamp,
 } from "firebase/firestore";
+import { db } from "../firebase";
 
 /** Fetch all cleanups once (sorted by scheduledAt ascending if present). */
 export async function listCleanups() {

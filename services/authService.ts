@@ -1,20 +1,19 @@
-// services/authService.ts
-import { auth } from "../firebase";
 import {
-  signInAnonymously,
-  signOut,
-  onAuthStateChanged,
-  updateProfile,
-  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  sendPasswordResetEmail,
-  signInWithCredential,
   GoogleAuthProvider,
-  signInWithPopup,
+  onAuthStateChanged,
   RecaptchaVerifier,
+  sendPasswordResetEmail,
+  signInAnonymously,
+  signInWithCredential,
+  signInWithEmailAndPassword,
   signInWithPhoneNumber,
+  signInWithPopup,
+  signOut,
+  updateProfile,
 } from "firebase/auth";
 import { Platform } from "react-native";
+import { auth } from "../firebase";
 
 export const anonymousLogin = async () => {
   const res = await signInAnonymously(auth);
@@ -24,17 +23,27 @@ export const anonymousLogin = async () => {
 export const loginWithEmail = (email: string, password: string) =>
   signInWithEmailAndPassword(auth, email.trim(), password);
 
-export const registerWithEmail = async (email: string, password: string, displayName?: string) => {
-  const { user } = await createUserWithEmailAndPassword(auth, email.trim(), password);
+export const registerWithEmail = async (
+  email: string,
+  password: string,
+  displayName?: string
+) => {
+  const { user } = await createUserWithEmailAndPassword(
+    auth,
+    email.trim(),
+    password
+  );
   if (displayName) await updateProfile(user, { displayName });
   return user;
 };
 
-export const sendReset = (email: string) => sendPasswordResetEmail(auth, email.trim());
+export const sendReset = (email: string) =>
+  sendPasswordResetEmail(auth, email.trim());
 
 export const logout = () => signOut(auth);
 
-export const onUserChange = (cb: (u: any) => void) => onAuthStateChanged(auth, cb);
+export const onUserChange = (cb: (u: any) => void) =>
+  onAuthStateChanged(auth, cb);
 
 /** --- Google helpers (no expo-auth-session import here) --- */
 // Web: sign in with popup
@@ -61,18 +70,30 @@ export function ensureWebRecaptcha(containerId = "recaptcha-container") {
     document.body.appendChild(div);
   }
   if (!(window as any)._recaptchaVerifier) {
-    (window as any)._recaptchaVerifier = new RecaptchaVerifier(auth, containerId, { size: "invisible" });
+    (window as any)._recaptchaVerifier = new RecaptchaVerifier(
+      auth,
+      containerId,
+      { size: "invisible" }
+    );
   }
   return (window as any)._recaptchaVerifier;
 }
 
-export async function phoneStart(phoneE164: string, recaptchaVerifierRefOrNull?: any) {
+export async function phoneStart(
+  phoneE164: string,
+  recaptchaVerifierRefOrNull?: any
+) {
   if (Platform.OS === "web") {
     const verifier = ensureWebRecaptcha();
     return await signInWithPhoneNumber(auth, phoneE164, verifier);
   } else {
-    if (!recaptchaVerifierRefOrNull?.current) throw new Error("Missing reCAPTCHA verifier");
-    return await signInWithPhoneNumber(auth, phoneE164, recaptchaVerifierRefOrNull.current);
+    if (!recaptchaVerifierRefOrNull?.current)
+      throw new Error("Missing reCAPTCHA verifier");
+    return await signInWithPhoneNumber(
+      auth,
+      phoneE164,
+      recaptchaVerifierRefOrNull.current
+    );
   }
 }
 

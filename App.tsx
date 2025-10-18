@@ -1,4 +1,3 @@
-// App.tsx
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React from "react";
@@ -6,7 +5,6 @@ import "react-native-gesture-handler";
 
 import { AuthProvider, useAuth } from "./context/auth";
 
-// Screens
 import Cleanups from "./screens/Cleanups";
 import Home from "./screens/Home";
 import Leaderboard from "./screens/Leaderboard";

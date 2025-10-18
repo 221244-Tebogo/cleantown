@@ -14,10 +14,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAuth } from "../context/auth";
 import {
-  anonymousLogin,
-  ensureWebRecaptcha,
   loginWithEmail,
   phoneConfirm,
   phoneStart,
@@ -42,35 +39,25 @@ type Mode = "login" | "signup";
 
 const BG = "#0B284A";
 const WHITE = "#FFFFFF";
-const TEXT_MUTED = "#E6EEF7";
 const BORDER = "rgba(255,255,255,0.12)";
 const PANEL = "rgba(255,255,255,0.06)";
 
 export default function Login() {
-  const { error } = useAuth();
   const [mode, setMode] = React.useState<Mode>("login");
-
-  // email/pw
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [name, setName] = React.useState("");
-
-  // phone
   const [phone, setPhone] = React.useState("+27");
   const [code, setCode] = React.useState("");
   const [confirmObj, setConfirmObj] = React.useState<any>(null);
   const recaptchaRef = React.useRef<any>(null);
-
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState("");
 
-  React.useEffect(() => {
-    if (Platform.OS === "web") ensureWebRecaptcha();
-  }, []);
-
-  React.useEffect(() => {
-    if (error) Alert.alert("Google sign-in failed", String((error as any)?.message ?? error));
-  }, [error]);
+  // ❌ REMOVE this if you didn’t implement it, it crashes Web before login works
+  // React.useEffect(() => {
+  //   if (Platform.OS === "web") ensureWebRecaptcha();
+  // }, []);
 
   const toggleMode = () => setMode((m) => (m === "login" ? "signup" : "login"));
   const shadow =
@@ -87,25 +74,21 @@ export default function Login() {
   const redirectUri = makeRedirectUri({ useProxy: true });
   const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID!,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID, // optional for standalone/dev client
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID, // optional for standalone/dev client
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
     redirectUri,
     scopes: ["openid", "profile", "email"],
   });
 
-  // handle native (iOS/Android via proxy) response -> Firebase
   React.useEffect(() => {
     (async () => {
       if (response?.type === "success") {
         try {
           setBusy(true);
-          // id_token is required for Firebase GoogleAuthProvider
           const idToken =
             (response as any)?.params?.id_token ||
             (response as any)?.authentication?.idToken;
-
           if (!idToken) throw new Error("No Google id_token returned");
-
           const credential = GoogleAuthProvider.credential(idToken);
           await signInWithCredential(auth, credential);
           setMsg("Signed in with Google.");
@@ -121,17 +104,13 @@ export default function Login() {
   const doGoogle = async () => {
     try {
       setBusy(true);
-
       if (Platform.OS === "web") {
-        // Simpler + reliable on web
         const provider = new GoogleAuthProvider();
         provider.setCustomParameters({ prompt: "select_account" });
         await signInWithPopup(auth, provider);
         setMsg("Signed in with Google.");
       } else {
-        // iOS/Android via Expo proxy
-        await promptAsync();
-        // handling continues in the response effect above
+        await promptAsync(); // handled in effect above
       }
     } catch (e: any) {
       Alert.alert("Google sign-in failed", e?.message || String(e));
@@ -140,19 +119,7 @@ export default function Login() {
     }
   };
 
-  // ---------- EMAIL / PHONE / ANON (unchanged) ----------
-  const doAnon = async () => {
-    setBusy(true);
-    try {
-      await anonymousLogin();
-      setMsg("Signed in anonymously.");
-    } catch (e: any) {
-      Alert.alert("Anonymous sign-in failed", e?.message || String(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
+  // ---------- EMAIL / PASSWORD ----------
   const submitEmail = async () => {
     if (!email || !password) {
       setMsg("Email and password are required.");
@@ -174,15 +141,13 @@ export default function Login() {
     }
   };
 
+  // ---------- RESET ----------
   const forgot = async () => {
-    if (!email) {
-      setMsg("Enter your email first.");
-      return;
-    }
+    if (!email) { setMsg("Enter your email first."); return; }
     setBusy(true);
     try {
       await sendReset(email.trim());
-      Alert.alert("Reset email sent", "Check your inbox for password reset instructions.");
+      Alert.alert("Reset email sent", "Check your inbox.");
     } catch (e: any) {
       Alert.alert("Reset failed", e?.message || String(e));
     } finally {
@@ -190,9 +155,10 @@ export default function Login() {
     }
   };
 
+  // ---------- PHONE ----------
   const sendCode = async () => {
     if (!phone || !phone.startsWith("+")) {
-      Alert.alert("Invalid phone", "Enter a number in E.164 format (e.g., +27...)");
+      Alert.alert("Invalid phone", "Enter in E.164 format (e.g., +27...)");
       return;
     }
     setBusy(true);
@@ -208,10 +174,7 @@ export default function Login() {
   };
 
   const confirmPhone = async () => {
-    if (!confirmObj || !code) {
-      setMsg("Enter the 6-digit code.");
-      return;
-    }
+    if (!confirmObj || !code) { setMsg("Enter the 6-digit code."); return; }
     setBusy(true);
     try {
       await phoneConfirm(confirmObj, code);
@@ -249,7 +212,7 @@ export default function Login() {
           />
         </View>
 
-        {/* Email / Password card */}
+        {/* Email / Password */}
         <View style={styles.card}>
           <Text style={styles.h}>{mode === "login" ? "Login with Email" : "Create an account"}</Text>
 
@@ -298,7 +261,7 @@ export default function Login() {
           </TouchableOpacity>
         </View>
 
-        {/* Google + Anonymous */}
+        {/* Google */}
         <View style={styles.card}>
           <TouchableOpacity
             style={[styles.googleBtn, shadow, busy && { opacity: 0.7 }]}
@@ -315,13 +278,9 @@ export default function Login() {
               </View>
             )}
           </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.secondaryBtn, { backgroundColor: "#10b981" }]} onPress={doAnon} disabled={busy}>
-            <Text style={styles.secondaryBtnText}>Continue anonymously</Text>
-          </TouchableOpacity>
         </View>
 
-        {/* Phone auth */}
+        {/* Phone */}
         <View style={styles.card}>
           <RecaptchaModal />
           <Text style={styles.h}>Sign in with Phone</Text>
@@ -379,16 +338,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: BORDER,
   },
-  h: {
-    color: WHITE,
-    fontSize: 18,
-    marginBottom: 10,
-    fontFamily: Platform.select({
-      ios: "Poppins-SemiBold",
-      android: "Poppins_600SemiBold",
-      default: "Poppins_600SemiBold",
-    }),
-  },
+  h: { color: WHITE, fontSize: 18, marginBottom: 10 },
   input: {
     height: 44,
     paddingHorizontal: 12,
@@ -399,37 +349,11 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(255,255,255,0.18)",
   },
-  primaryBtn: {
-    borderRadius: 12,
-    backgroundColor: "#2d6cdf",
-    paddingVertical: 12,
-    alignItems: "center",
-    marginBottom: 8,
-  },
+  primaryBtn: { borderRadius: 12, backgroundColor: "#2d6cdf", paddingVertical: 12, alignItems: "center", marginBottom: 8 },
   primaryBtnText: { color: WHITE, fontSize: 15, fontWeight: "600" },
-  secondaryBtn: {
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-    marginTop: 8,
-  },
+  secondaryBtn: { borderRadius: 12, paddingVertical: 12, alignItems: "center", marginTop: 8 },
   secondaryBtnText: { color: WHITE, fontSize: 14, fontWeight: "600" },
-  googleBtn: {
-    borderRadius: 12,
-    backgroundColor: "#DB4437",
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
+  googleBtn: { borderRadius: 12, backgroundColor: "#DB4437", paddingVertical: 14, alignItems: "center", justifyContent: "center", marginBottom: 8 },
   googleRow: { flexDirection: "row", alignItems: "center", justifyContent: "center" },
-  googleText: {
-    color: WHITE,
-    fontSize: 16,
-    fontFamily: Platform.select({
-      ios: "Poppins-SemiBold",
-      android: "Poppins_600SemiBold",
-      default: "Poppins_600SemiBold",
-    }),
-  },
+  googleText: { color: WHITE, fontSize: 16 },
 });

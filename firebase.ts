@@ -1,4 +1,3 @@
-// firebase.ts
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getApp, getApps, initializeApp } from "firebase/app";
 import {
@@ -8,49 +7,61 @@ import {
   initializeAuth,
 } from "firebase/auth";
 import { getDatabase } from "firebase/database";
-import {
-  getFirestore,
-  initializeFirestore, // ⬅️ add this
-} from "firebase/firestore";
+import { getFirestore, initializeFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { Platform } from "react-native";
 
-// env comes from app.json/app.config via EXPO_PUBLIC_* keys
+// 🔥 Load environment variables from Expo
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FB_API_KEY,
   authDomain: process.env.EXPO_PUBLIC_FB_AUTH_DOMAIN,
   projectId: process.env.EXPO_PUBLIC_FB_PROJECT_ID,
-  storageBucket: process.env.EXPO_PUBLIC_FB_STORAGE_BUCKET,
+  storageBucket: process.env.EXPO_PUBLIC_FB_STORAGE_BUCKET, // keep this for console/hosting, etc.
   messagingSenderId: process.env.EXPO_PUBLIC_FB_MSG_SENDER,
   appId: process.env.EXPO_PUBLIC_FB_APP_ID,
 };
 
+console.log("✅ Firebase ENV loaded:", firebaseConfig);
+
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 // ---- Auth (persist on native, default on web) ----
-let _auth: Auth;
+let auth: Auth;
 if (Platform.OS === "web") {
-  _auth = (globalThis as any)._auth ?? getAuth(app);
+  auth = getAuth(app);
 } else {
-  _auth =
+  auth =
     (globalThis as any)._auth ??
     initializeAuth(app, {
       persistence: getReactNativePersistence(AsyncStorage),
     });
+  (globalThis as any)._auth = auth;
 }
-(globalThis as any)._auth = _auth;
 
-// ---- Firestore (use long-polling on web to avoid WebChannel 400s) ----
+// ---- Firestore ----
 const db =
   Platform.OS === "web"
     ? initializeFirestore(app, {
         experimentalAutoDetectLongPolling: true,
-        useFetchStreams: false, // stick to XHR; avoids some proxies/adblockers breaking streams
+        useFetchStreams: false,
       })
     : getFirestore(app);
 
-// ---- RTDB & Storage (unchanged) ----
+// ---- Realtime DB (optional) ----
 const rtdb = getDatabase(app);
-const storage = getStorage(app);
 
-export { app, _auth as auth, db, rtdb, storage };
+// ---- Storage: FORCE the exact bucket used by your rules editor ----
+const storage = getStorage(app, "gs://cleantown-ad312.firebasestorage.app");
+try {
+  console.log("🔗 Storage bucket:", ref(storage, "").bucket);
+} catch {
+  console.log(
+    "🔗 Storage bucket (fallback):",
+    (storage as any)?._bucket?.name || app.options.storageBucket
+  );
+}
+
+// Debug: confirm bucket at runtime
+console.log("🔗 Storage bucket:", (storage as any).bucket);
+
+export { app, auth, db, rtdb, storage };

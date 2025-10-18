@@ -72,12 +72,15 @@ gradle.properties
 *.cer
 *.csr
 *.mobileprovision
+
 # Firebase native configs (only used in bare/ejected)
 google-services.json
 GoogleService-Info.plist
+
 # Firebase admin / service accounts (server-side only)
 serviceAccount*.json
 firebase-adminsdk-*.json
+
 # Sentry auth (if present)
 sentry.properties
 
