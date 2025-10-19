@@ -1,4 +1,3 @@
-// screens/Leaderboard.tsx
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import {
@@ -53,8 +52,8 @@ const COLORS = {
   bronze: "#C57A2F",
 };
 
-const PAGE_SIZE = 30; // keep pages light for mobile + rules
-const FRIEND_BATCH = 10; // Firestore 'in' cap
+const PAGE_SIZE = 30;
+const FRIEND_BATCH = 10;
 
 export default function Leaderboard() {
   const { user } = useAuth();
@@ -68,7 +67,6 @@ export default function Leaderboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // pagination state per tab (cursor & no-more)
   const lastDocRef = useRef<Record<TabKey, QueryDocumentSnapshot<DocumentData> | null>>({
     global: null,
     local: null,
@@ -76,7 +74,6 @@ export default function Leaderboard() {
   });
   const doneRef = useRef<Record<TabKey, boolean>>({ global: false, local: false, friends: false });
 
-  // my rank + points shown as chip
   const [myRank, setMyRank] = useState<number | null>(null);
   const [myPoints, setMyPoints] = useState<number>(0);
 
@@ -90,7 +87,6 @@ export default function Leaderboard() {
     doneRef.current[t] = false;
   }, []);
 
-  // fetch my profile (city/friends/points) and watch my points in realtime
   useEffect(() => {
     let unsub: (() => void) | null = null;
     (async () => {
@@ -116,7 +112,6 @@ export default function Leaderboard() {
     return () => unsub && unsub();
   }, [uid]);
 
-  // compute my rank via COUNT aggregation (fast, O(1))
   const computeMyRank = useCallback(async () => {
     if (!uid) return;
     try {
@@ -125,7 +120,6 @@ export default function Leaderboard() {
       const myScore = Number(my.totalPoints ?? 0);
       setMyPoints(myScore);
 
-      // rank = count(users where totalPoints > myScore) + 1
       const agg = await getAggregateFromServer(
         query(collection(db, "users"), where("totalPoints", ">", myScore)),
         { higher: count() }

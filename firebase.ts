@@ -8,21 +8,21 @@ import {
 } from "firebase/auth";
 import { getDatabase } from "firebase/database";
 import { getFirestore, initializeFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+import { getStorage, ref } from "firebase/storage";
 import { Platform } from "react-native";
 
-// 🔥 Load environment variables from Expo
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FB_API_KEY,
   authDomain: process.env.EXPO_PUBLIC_FB_AUTH_DOMAIN,
   projectId: process.env.EXPO_PUBLIC_FB_PROJECT_ID,
-  storageBucket: process.env.EXPO_PUBLIC_FB_STORAGE_BUCKET, // keep this for console/hosting, etc.
+  storageBucket: process.env.EXPO_PUBLIC_FB_STORAGE_BUCKET,
   messagingSenderId: process.env.EXPO_PUBLIC_FB_MSG_SENDER,
   appId: process.env.EXPO_PUBLIC_FB_APP_ID,
 };
 
 console.log("✅ Firebase ENV loaded:", firebaseConfig);
 
+// Initialize Firebase app
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 // ---- Auth (persist on native, default on web) ----
@@ -47,10 +47,10 @@ const db =
       })
     : getFirestore(app);
 
-// ---- Realtime DB (optional) ----
+// ---- Realtime DB ----
 const rtdb = getDatabase(app);
 
-// ---- Storage: FORCE the exact bucket used by your rules editor ----
+// ---- Storage ----
 const storage = getStorage(app, "gs://cleantown-ad312.firebasestorage.app");
 try {
   console.log("🔗 Storage bucket:", ref(storage, "").bucket);
@@ -60,8 +60,5 @@ try {
     (storage as any)?._bucket?.name || app.options.storageBucket
   );
 }
-
-// Debug: confirm bucket at runtime
-console.log("🔗 Storage bucket:", (storage as any).bucket);
 
 export { app, auth, db, rtdb, storage };

@@ -32,6 +32,7 @@ import {
   signInWithPopup,
 } from "firebase/auth";
 import { auth } from "../firebase";
+import { ensureUserDoc } from "../services/userProfile"; // ✅ make sure this file exists
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -42,7 +43,7 @@ const WHITE = "#FFFFFF";
 const BORDER = "rgba(255,255,255,0.12)";
 const PANEL = "rgba(255,255,255,0.06)";
 
-export default function Login() {
+export default function Login() { // ✅ not async
   const [mode, setMode] = React.useState<Mode>("login");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -53,11 +54,6 @@ export default function Login() {
   const recaptchaRef = React.useRef<any>(null);
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState("");
-
-  // ❌ REMOVE this if you didn’t implement it, it crashes Web before login works
-  // React.useEffect(() => {
-  //   if (Platform.OS === "web") ensureWebRecaptcha();
-  // }, []);
 
   const toggleMode = () => setMode((m) => (m === "login" ? "signup" : "login"));
   const shadow =
@@ -91,6 +87,8 @@ export default function Login() {
           if (!idToken) throw new Error("No Google id_token returned");
           const credential = GoogleAuthProvider.credential(idToken);
           await signInWithCredential(auth, credential);
+          // ✅ create user doc after Google sign-in
+          if (auth.currentUser) await ensureUserDoc(auth.currentUser);
           setMsg("Signed in with Google.");
         } catch (e: any) {
           Alert.alert("Google sign-in failed", e?.message || String(e));
@@ -108,6 +106,7 @@ export default function Login() {
         const provider = new GoogleAuthProvider();
         provider.setCustomParameters({ prompt: "select_account" });
         await signInWithPopup(auth, provider);
+        if (auth.currentUser) await ensureUserDoc(auth.currentUser); // ✅
         setMsg("Signed in with Google.");
       } else {
         await promptAsync(); // handled in effect above
@@ -129,9 +128,11 @@ export default function Login() {
     try {
       if (mode === "login") {
         await loginWithEmail(email.trim(), password);
+        if (auth.currentUser) await ensureUserDoc(auth.currentUser); // ✅ make sure doc exists
         setMsg("Welcome back!");
       } else {
         await registerWithEmail(email.trim(), password, name.trim());
+        if (auth.currentUser) await ensureUserDoc(auth.currentUser); // ✅ create doc
         setMsg("Account created.");
       }
     } catch (e: any) {
@@ -178,6 +179,7 @@ export default function Login() {
     setBusy(true);
     try {
       await phoneConfirm(confirmObj, code);
+      if (auth.currentUser) await ensureUserDoc(auth.currentUser); // ✅ ensure user doc
       setMsg("Phone number verified.");
     } catch (e: any) {
       Alert.alert("Invalid code", e?.message || String(e));
@@ -186,6 +188,7 @@ export default function Login() {
     }
   };
 
+  // Expo Recaptcha (native only)
   const RecaptchaModal = () => {
     if (Platform.OS === "web") return null;
     const { FirebaseRecaptchaVerifierModal } = require("expo-firebase-recaptcha");

@@ -9,77 +9,80 @@ import {
   onAuthStateChanged,
   signInWithCredential,
 } from "firebase/auth";
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Platform } from "react-native";
 import { auth } from "../firebase";
-import { upsertUser } from "../services/userService";
 
-WebBrowser.maybeCompleteAuthSession(); // must be top-level
+WebBrowser.maybeCompleteAuthSession(); // required at module top
 
 // ---------------- Types & context ----------------
-type User = { id: string; name?: string | null; email?: string | null; picture?: string | null } | null;
+type User = {
+  id: string;
+  name?: string | null;
+  email?: string | null;
+  picture?: string | null;
+} | null;
+
 type AuthCtx = {
   user: User;
   isLoading: boolean;
   error?: any;
-  ready: boolean;          // request is mounted & can be used
-  reason?: string;         // why sign-in is disabled (missing IDs, etc.)
+  ready: boolean;   // Google request hook is mounted
+  reason?: string;  // If Google sign-in disabled (missing IDs)
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
 };
 
 const Ctx = createContext<AuthCtx | null>(null);
-export function useAuth(): AuthCtx {
-  const ctx = useContext(Ctx);
-  if (!ctx) throw new Error("useAuth must be used inside <AuthProvider>");
-  return ctx;
-}
+export const useAuth = (): AuthCtx => {
+  const v = useContext(Ctx);
+  if (!v) throw new Error("useAuth must be used inside <AuthProvider>");
+  return v;
+};
 
 // ---------------- Helpers ----------------
-function nameFromEmail(email?: string | null) {
-  if (!email) return null;
-  const raw = (email.split("@")[0] ?? "").replace(/[._-]+/g, " ").trim();
-  return raw ? raw.replace(/\b\w/g, (c) => c.toUpperCase()) : null;
-}
-function mapFirebaseUser(fb: FBUser | null): User {
-  if (!fb) return null;
-  return {
-    id: fb.uid,
-    name: fb.displayName ?? nameFromEmail(fb.email) ?? null,
-    email: fb.email ?? null,
-    picture: fb.photoURL ?? null,
-  };
-}
+const nameFromEmail = (email?: string | null) =>
+  email ? email.split("@")[0]?.replace(/[._-]+/g, " ").replace(/\b\w/g, c => c.toUpperCase()) ?? null : null;
+
+const mapFirebaseUser = (fb: FBUser | null): User =>
+  !fb
+    ? null
+    : {
+        id: fb.uid,
+        name: fb.displayName ?? nameFromEmail(fb.email) ?? null,
+        email: fb.email ?? null,
+        picture: fb.photoURL ?? null,
+      };
 
 // ---------------- Env (Expo auto-inlines EXPO_PUBLIC_*) ----------------
-// Web client ID: support both names
 const webClientId =
   process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
   process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ||
   undefined;
 
-// Native client IDs (from Google Cloud OAuth)
 const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || undefined;
 const androidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || undefined;
-
-// Optional Expo Go client ID (only if you created one); safe to omit.
 const expoClientId = process.env.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID || undefined;
 
-// Redirect URI: use Expo proxy on native, direct origin on web
+// Use Expo proxy for native, direct on web
 const USE_PROXY = Platform.OS !== "web";
 const redirectUri = AuthSession.makeRedirectUri({ useProxy: USE_PROXY });
 
 // ---------------- Provider ----------------
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User>(null);
-  const [isLoading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<any>();
   const [reason, setReason] = useState<string | undefined>();
+  const lastProvider = useRef<"google" | "email" | "phone" | "anon" | null>(null);
 
-  // Keep Firebase in sync with app state
-  useEffect(() => onAuthStateChanged(auth, (fb) => setUser(mapFirebaseUser(fb))), []);
+  // Keep Firebase in sync
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, fb => setUser(mapFirebaseUser(fb)));
+    return () => unsub();
+  }, []);
 
-  // Tell the UI why the button might be disabled
+  // Explain missing Google IDs
   useEffect(() => {
     if (Platform.OS === "web" && !webClientId) setReason("Missing Web Google client ID");
     else if (Platform.OS === "ios" && !iosClientId && !expoClientId) setReason("Missing iOS (or Expo) Google client ID");
@@ -87,17 +90,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     else setReason(undefined);
   }, []);
 
-  // Only mount the hook when the current platform has an ID to prevent the
-  // “Client Id property `<id>` must be defined” crash on that platform.
+  // Only mount hook when platform has an ID (prevents init crashes)
   const hasId =
     (Platform.OS === "web" && !!webClientId) ||
     (Platform.OS === "ios" && (!!iosClientId || !!expoClientId)) ||
     (Platform.OS === "android" && (!!androidClientId || !!expoClientId));
 
-  // Build per-platform config
+  // IMPORTANT: ask for both id_token + access_token so we can revoke on native
   const googleConfig: Google.GoogleAuthRequestConfig = {
     redirectUri,
-    responseType: "id_token", // we need an ID token for Firebase
+    responseType: "id_token token",
     scopes: ["openid", "profile", "email"],
     selectAccount: true,
     ...(Platform.OS === "web" ? { webClientId } : {}),
@@ -105,74 +107,89 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ...(Platform.OS === "android" ? { androidClientId, expoClientId } : {}),
   };
 
-  // NOTE: Using a conditional hook is generally discouraged, but here it avoids
-  // the library throwing during initialization when IDs are missing in dev.
   const [request, response, promptAsync] = hasId
     ? Google.useAuthRequest(googleConfig)
     : ([null, null, async () => {}] as unknown as ReturnType<typeof Google.useAuthRequest>);
 
   const ready = !!request;
 
-  // Handle sign-in result
+  // Store the Google access token (native) so we can revoke on signOut
+  const googleAccessTokenRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!response) return;
     (async () => {
       try {
         if (response.type === "success") {
-          // @ts-ignore – params is typed loosely by the lib
-          const idToken: string | undefined = response.params?.id_token;
-          // Access token is optional for Firebase; include if present
+          // id_token is for Firebase credential; accessToken is for revocation
+          const idToken = (response as any)?.params?.id_token as string | undefined;
           const accessToken = response.authentication?.accessToken as string | undefined;
+          if (accessToken) googleAccessTokenRef.current = accessToken;
           if (!idToken) throw new Error("No id_token returned from Google");
 
-          const cred = GoogleAuthProvider.credential(idToken, accessToken);
-        const userCred = await signInWithCredential(auth, cred);
-
-await upsertUser(userCred.user.uid, {
-  name: userCred.user.displayName ?? nameFromEmail(userCred.user.email) ?? "CleanTown User",
-  email: userCred.user.email ?? null,
-  photoURL: userCred.user.photoURL ?? null,
-  phoneNumber: userCred.user.phoneNumber ?? null,
-  role: "user",
-});
-
-setUser(mapFirebaseUser(userCred.user));
-setError(undefined);
-
-
+          const cred = GoogleAuthProvider.credential(idToken);
+          await signInWithCredential(auth, cred);
+          lastProvider.current = "google";
+          setError(undefined);
         } else if (response.type === "error") {
           setError(response.error);
-        } // cancel/dismiss → ignore
+        }
       } catch (e) {
         setError(e);
       }
     })();
   }, [response]);
 
-  // Public API
+  // ------- Public API -------
   const signIn = async () => {
     setError(undefined);
     if (!ready) {
       if (__DEV__ && reason) Alert.alert("Google Sign-in disabled", reason);
       return;
     }
-    setLoading(true);
+    setIsLoading(true);
     try {
-      await promptAsync({ useProxy: USE_PROXY, preferEphemeralSession: true, showInRecents: true });
+      await promptAsync({
+        useProxy: USE_PROXY,
+        preferEphemeralSession: true,
+        showInRecents: true,
+      });
     } catch (e) {
       setError(e);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   const signOut = async () => {
-    await fbSignOut(auth);
+    try {
+      // If Google on native: revoke the OAuth token so chooser appears next time
+      if (Platform.OS !== "web" && lastProvider.current === "google" && googleAccessTokenRef.current) {
+        try {
+          await AuthSession.revokeAsync(
+            { token: googleAccessTokenRef.current, clientId: iosClientId || androidClientId || expoClientId || "" },
+            { revocationEndpoint: "https://oauth2.googleapis.com/revoke" }
+          );
+        } catch {
+          // Best-effort revoke; ignore failures
+        }
+      }
+      await fbSignOut(auth);
+      googleAccessTokenRef.current = null;
+      lastProvider.current = null;
+      setUser(null); // flip the gate immediately
+    } finally {
+      // Optional perf cleanups for WebBrowser on native
+      if (Platform.OS !== "web") {
+        try {
+          await WebBrowser.coolDownAsync();
+        } catch {}
+      }
+    }
   };
 
-  // Diagnostics (safe to keep while setting up)
+  // Diagnostics (keep while wiring up; comment out later)
   console.log("Auth redirectUri →", redirectUri);
-  console.log("Request redirectUri →", (request as any)?.redirectUri);
   console.log("IDs present:", { expo: !!expoClientId, ios: !!iosClientId, android: !!androidClientId, web: !!webClientId });
 
   const value = useMemo(

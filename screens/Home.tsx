@@ -1,7 +1,12 @@
 import { FontAwesome5, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import React, { useLayoutEffect } from "react";
+import { PointsChip } from "../components/PointsChip";
+import { useAuth } from "../context/auth";
+import { useMyPoints } from "../hooks/useMyPoints";
+
 import { Image } from "expo-image";
-import React from "react";
+
 import {
   Platform,
   Pressable,
@@ -11,7 +16,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { useAuth } from "../context/auth";
 
 const COLORS = {
   bg: "#E8F5FF",
@@ -28,8 +32,15 @@ const COLORS = {
 };
 
 export default function Home() {
-  const nav = useNavigation<any>();
+  const navigation = useNavigation();
   const { user, signOut } = useAuth();
+  const points = useMyPoints(); // live points
+
+    useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => <PointsChip />,
+    });
+  }, [navigation]); 
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -45,17 +56,13 @@ export default function Home() {
             <View style={styles.shield}>
               <MaterialCommunityIcons name="shield-check" size={16} color="#fff" />
             </View>
-            <Text style={styles.pointsText}>00</Text>
+            <Text style={styles.pointsText}>{Number(points ?? 0).toString().padStart(2, "0")}</Text>
           </View>
 
-          {/* small action link */}
-          <Pressable
-            onPress={user ? signOut : () => nav.navigate("Profile")}
-            hitSlop={10}
-            style={{ marginLeft: 8 }}
-          >
-            <Text style={styles.linkText}>{user ? "Logout" : "Profile"}</Text>
-          </Pressable>
+           <Pressable onPress={() => (user ? signOut() : navigation.navigate("Profile"))} hitSlop={10} style={{ marginLeft: 8 }}>
+    <Text style={styles.linkText}>{user ? "Logout" : "Profile"}</Text>
+  </Pressable>
+
         </View>
 
         {/* Mascot */}
@@ -75,19 +82,19 @@ export default function Home() {
             color={COLORS.tile1}
             label="Identify Trash"
             icon={<Ionicons name="camera" size={22} />}
-            onPress={() => nav.navigate("Report")}
+            onPress={() => navigation.navigate("Report")}
           />
           <Tile
             color={COLORS.tile2}
             label="Hotspots"
             icon={<Ionicons name="location" size={22} />}
-            onPress={() => nav.navigate("Map")}
+            onPress={() => navigation.navigate("Map")}
           />
           <Tile
             color={COLORS.tile3}
             label="Leaderboard"
             icon={<FontAwesome5 name="medal" size={20} />}
-            onPress={() => nav.navigate("Leaderboard")}
+            onPress={() => navigation.navigate("Leaderboard")}
           />
         </View>
 
@@ -114,9 +121,9 @@ export default function Home() {
         {/* Bottom nav (static for home) */}
         <View style={styles.bottomNav}>
           <NavIcon active icon={<Ionicons name="home" size={22} color={COLORS.primary} />} onPress={() => {}} />
-          <NavIcon icon={<FontAwesome5 name="recycle" size={20} color={COLORS.primary} />} onPress={() => nav.navigate("Cleanups")} />
-          <NavIcon icon={<Ionicons name="trophy" size={22} color={COLORS.primary} />} onPress={() => nav.navigate("Leaderboard")} />
-          <NavIcon icon={<Ionicons name="person-circle" size={24} color={COLORS.primary} />} onPress={() => nav.navigate("Profile")} />
+          <NavIcon icon={<FontAwesome5 name="recycle" size={20} color={COLORS.primary} />} onPress={() => navigation.navigate("Cleanups")} />
+          <NavIcon icon={<Ionicons name="trophy" size={22} color={COLORS.primary} />} onPress={() => navigation.navigate("Leaderboard")} />
+          <NavIcon icon={<Ionicons name="person-circle" size={24} color={COLORS.primary} />} onPress={() => navigation.navigate("Profile")} />
         </View>
       </ScrollView>
     </SafeAreaView>

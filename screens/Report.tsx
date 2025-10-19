@@ -1,8 +1,8 @@
+// Report.tsx
 import * as ImagePicker from "expo-image-picker";
 import React, { useState } from "react";
 import { Alert, Button, Image, Platform, Text, TextInput, View } from "react-native";
-import { auth } from "../firebase";
-import { createReport } from "../services/reportService";
+import { createReport } from "../services/reportCreate";
 
 export default function Report() {
   const [note, setNote] = useState("");
@@ -35,8 +35,6 @@ export default function Report() {
   };
 
   const handleSubmit = async () => {
-    const uid = auth.currentUser?.uid;
-    if (!uid) return Alert.alert("Sign in required", "Please sign in to submit a report.");
     if (!photo) return Alert.alert("No photo", "Please attach a photo.");
 
     setStatus("Uploading 0%…");
