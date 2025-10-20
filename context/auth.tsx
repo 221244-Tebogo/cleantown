@@ -11,6 +11,8 @@ import {
 } from "firebase/auth";
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Platform } from "react-native";
+import { ensureUserDoc } from "../services/users";
+
 import { auth } from "../firebase";
 
 WebBrowser.maybeCompleteAuthSession(); // required at module top
@@ -187,6 +189,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
   };
+
+  useEffect(() => {
+  const unsub = onAuthStateChanged(auth, async (fb) => {
+    setUser(mapFirebaseUser(fb));
+    if (fb) {
+      try { await ensureUserDoc(); } catch (e) { console.log("ensureUserDoc:", e); }
+    }
+  });
+  return () => unsub();
+}, []);
 
   // Diagnostics (keep while wiring up; comment out later)
   console.log("Auth redirectUri →", redirectUri);

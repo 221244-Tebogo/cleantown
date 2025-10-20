@@ -1,4 +1,3 @@
-// Report.tsx
 import * as ImagePicker from "expo-image-picker";
 import React, { useState } from "react";
 import { Alert, Button, Image, Platform, Text, TextInput, View } from "react-native";

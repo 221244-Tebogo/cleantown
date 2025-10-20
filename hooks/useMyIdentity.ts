@@ -1,4 +1,3 @@
-// hooks/useMyIdentity.ts
 import { doc, onSnapshot } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/auth";

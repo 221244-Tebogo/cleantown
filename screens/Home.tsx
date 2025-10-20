@@ -187,8 +187,6 @@ function NavIcon({
   );
 }
 
-/* ----------------- styles ----------------- */
-
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.bg },
   container: { padding: 16, paddingBottom: 28, gap: 14 },

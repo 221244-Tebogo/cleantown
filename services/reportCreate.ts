@@ -1,71 +1,71 @@
-// /src/services/reportCreate.ts
+// services/reportCreate.ts (or reportService.ts — either is fine)
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import { geohashForLocation } from "geofire-common";
 import { auth, db, storage } from "../firebase";
-import { awardPoints } from "./points";
+import { awardPoints } from "./users"; // ✅ REQUIRED
 
 type CreateReportArgs = {
   coords: { lat: number; lng: number };
-  category: string;
-  note: string;
+  category?: string;
+  note?: string;
   photoUri: string;
-  onProgress?: (pct: number) => void; // 0..100
+  onProgress?: (pct: number) => void;
 };
 
 export async function createReport({
   coords,
-  category,
-  note,
+  category = "mixed",
+  note = "",
   photoUri,
   onProgress,
 }: CreateReportArgs) {
-  const uid = auth.currentUser?.uid;
-  if (!uid) throw new Error("Not signed in");
-  if (!photoUri) throw new Error("No photo selected.");
+  const user = auth.currentUser;
+  if (!user) throw new Error("You must be signed in to submit a report.");
 
-  // 1) Upload image
-  const res = await fetch(photoUri);
-  const blob = await res.blob();
-  const day = new Date().toISOString().slice(0, 10); // e.g., 2025-10-18
-  const key = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.jpg`;
-  const objectRef = ref(storage, `reports/${uid}/${day}/${key}`);
+  const lat = Number(coords.lat);
+  const lng = Number(coords.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng))
+    throw new Error("Invalid coordinates.");
 
-  const task = uploadBytesResumable(objectRef, blob, {
-    contentType: "image/jpeg",
-  });
+  // Upload photo
+  const filePath = `reports/${user.uid}/${Date.now()}.jpg`;
+  const photoRef = ref(storage, filePath);
+  const blob = await (await fetch(photoUri)).blob();
+
+  const uploadTask = uploadBytesResumable(photoRef, blob);
   await new Promise<void>((resolve, reject) => {
-    task.on(
+    uploadTask.on(
       "state_changed",
-      (snap) => {
-        const pct = (snap.bytesTransferred / snap.totalBytes) * 100;
-        onProgress?.(Math.round(pct));
-      },
+      (s) =>
+        onProgress?.(Math.round((s.bytesTransferred / s.totalBytes) * 100)),
       reject,
-      () => resolve()
+      resolve
     );
   });
-  await awardPoints(uid, 10);
-  const downloadURL = await getDownloadURL(task.snapshot.ref);
 
-  // 2) Create Firestore doc (WITH geohash + confirmation fields)
+  const photoUrl = await getDownloadURL(photoRef);
+  const geohash = geohashForLocation([lat, lng]);
+
+  // Create report doc (fields match your rules)
   await addDoc(collection(db, "reports"), {
-    uid,
-    coords, // { lat, lng }
-    geohash: geohashForLocation([coords.lat, coords.lng]),
+    uid: user.uid,
+    location: { lat, lng },
+    geohash,
+    status: "open",
+    photoUrl,
+    description: note,
     category,
-    note,
-    photoUrl: downloadURL,
-    storagePath: objectRef.fullPath,
     createdAt: serverTimestamp(),
-
-    // Waze-like crowd confirmation fields:
-    status: "open", // "open" | "maybe_gone" | "closed"
-    lastConfirmedAt: serverTimestamp(),
-    confirmations: 0,
-    dismissals: 0,
-    expiresAt: null,
+    updatedAt: serverTimestamp(),
   });
 
-  return { ok: true };
+  // Award points (rules allow +1/+2/+10)
+  try {
+    await awardPoints(user.uid, 10);
+  } catch (e) {
+    console.log("awardPoints failed:", e);
+  }
+
+  return { photoUrl, filePath };
 }

@@ -13,7 +13,6 @@ export function useGoogleAuth() {
     scopes: ["openid", "profile", "email"],
   });
 
-  // Debug: confirm the exact URI used
   console.log("Auth redirectUri →", redirectUri);
   console.log("Request redirectUri →", request?.redirectUri);
 

@@ -57,7 +57,7 @@ const FRIEND_BATCH = 10;
 
 export default function Leaderboard() {
   const { user } = useAuth();
-  const uid = user?.uid;
+  const uid = (user as any)?.id;
 
   // profile doc (authoritative source for city + friends)
   const [profile, setProfile] = useState<{ city?: string; friends?: string[]; totalPoints?: number } | null>(null);

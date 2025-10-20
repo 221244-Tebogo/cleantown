@@ -11,5 +11,5 @@
   "include": [
     "**/*.ts",
     "**/*.tsx"
-  ]
+, "scripts/backfillReports.js", "scripts/backfillAll.js"  ]
 }
