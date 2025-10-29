@@ -1,4 +1,3 @@
-// scripts/backfillAll.ts
 import { backfillGeohash } from "./backfillGeohash";
 import { backfillReportsOnce } from "./backfillReportsOnce";
 

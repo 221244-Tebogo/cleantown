@@ -10,6 +10,10 @@
   },
   "include": [
     "**/*.ts",
-    "**/*.tsx"
-, "scripts/backfillReports.js", "scripts/backfillAll.js"  ]
+    "**/*.tsx",
+    "scripts/backfillReports.js",
+    "scripts/backfillAll.js",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ]
 }
