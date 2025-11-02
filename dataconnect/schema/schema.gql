@@ -1,0 +1,39 @@
+type User @table {
+  username: String!
+  email: String!
+  createdAt: Timestamp!
+  displayName: String
+  photoUrl: String
+  totalPoints: Int
+}
+
+type Report @table {
+  reporter: User!
+  latitude: Float!
+  longitude: Float!
+  description: String!
+  status: String!
+  createdAt: Timestamp!
+  address: String
+  notesByAdmin: String
+}
+
+type Photo @table {
+  report: Report!
+  imageUrl: String!
+  uploadedAt: Timestamp!
+  caption: String
+}
+
+type Badge @table {
+  name: String!
+  description: String!
+  imageUrl: String!
+  pointsAwarded: Int!
+}
+
+type UserBadge @table(key: ["user", "badge"]) {
+  user: User!
+  badge: Badge!
+  awardedAt: Timestamp!
+}

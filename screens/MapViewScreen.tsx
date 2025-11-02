@@ -120,31 +120,6 @@ export default function MapViewScreen() {
         <Ionicons name="camera" size={20} color="#fff" />
       </Pressable>
 
-{/* Always-on confirm bar (Button version) */}
-{active && (
-  <View pointerEvents="box-none" style={styles.buttonWrap}>
-    <View style={styles.buttonBar}>
-      <View style={{ flex: 1 }}>
-        <Button
-          title="Not there"
-          onPress={() => handleNotThere(active.id)}
-          // color works on iOS/Android (ignored on web)
-          color="#6B7280"
-        />
-      </View>
-      <View style={{ width: 10 }} />
-      <View style={{ flex: 1 }}>
-        <Button
-          title="Still there"
-          onPress={() => handleStillThere(active.id)}
-          color="#0EA5E9"
-        />
-      </View>
-    </View>
-  </View>
-)}
-
-
       {/* Always show confirm bar when any report exists */}
       {active && (
         <MapConfirmBar

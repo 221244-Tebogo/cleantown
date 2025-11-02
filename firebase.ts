@@ -11,16 +11,19 @@ import { getFirestore, initializeFirestore } from "firebase/firestore";
 import { getStorage, ref } from "firebase/storage";
 import { Platform } from "react-native";
 
+// TODO: It'''s recommended to load these from a .env file
+// for better security and to avoid committing them to source control.
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FB_API_KEY,
-  authDomain: process.env.EXPO_PUBLIC_FB_AUTH_DOMAIN,
-  projectId: process.env.EXPO_PUBLIC_FB_PROJECT_ID,
-  storageBucket: process.env.EXPO_PUBLIC_FB_STORAGE_BUCKET,
-  messagingSenderId: process.env.EXPO_PUBLIC_FB_MSG_SENDER,
-  appId: process.env.EXPO_PUBLIC_FB_APP_ID,
+  apiKey: "AIzaSyAi7MVTxhnAZ0fWUcrNEicuEsBR1dfqCdY",
+  authDomain: "cleantown-ad312.firebaseapp.com",
+  projectId: "cleantown-ad312",
+  storageBucket: "cleantown-ad312.firebasestorage.app",
+  messagingSenderId: "907366756783",
+  appId: "1:907366756783:web:b0c2212b8f9a08db90ff5a"
 };
 
-console.log("✅ Firebase ENV loaded:", firebaseConfig);
+
+console.log("✅ Firebase config loaded");
 
 // Initialize Firebase app
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);

@@ -14,7 +14,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Metro cache (sometimes created at project root)
+# Metro cache
 .metro-cache/
 
 # --- OS / editor ---
@@ -26,14 +26,14 @@ Thumbs.db
 .vscode/*
 !.vscode/settings.json
 
-# --- Env / tooling helpers ---
+# --- Environment files ---
 .env
 .env.*
 !.env.example
 .envrc
 .direnv/
 
-# Optional npm/yarn config that can contain tokens (only commit if you *need* them and they’re sanitized)
+# --- Package manager configs (may hold tokens) ---
 .npmrc
 .yarnrc
 .yarnrc.yml
@@ -41,12 +41,12 @@ Thumbs.db
 # --- Expo / Web ---
 expo-env.d.ts
 
-# --- EAS (keep eas.json, ignore local build/update artifacts) ---
+# --- EAS build/update artifacts ---
 .eas/local/
 .eas/build/
 .eas/update/
 
-# --- Native (Expo managed; keep ignored even if you eject) ---
+# --- Native projects (Expo managed; keep ignored even if ejected) ---
 ios/
 android/
 Pods/
@@ -55,7 +55,7 @@ Pods/
 .gradle/
 .cxx/
 
-# Android/Gradle extras that can appear outside android/ (if you ever unignore android/)
+# Android/Gradle extras
 *.iml
 local.properties
 gradle.properties
@@ -73,18 +73,13 @@ gradle.properties
 *.csr
 *.mobileprovision
 
-# Firebase native configs (only used in bare/ejected)
+# --- Firebase configs & service accounts ---
 google-services.json
 GoogleService-Info.plist
-
-# Firebase admin / service accounts (server-side only)
 serviceAccount*.json
 firebase-adminsdk-*.json
 
-# Sentry auth (if present)
-sentry.properties
-
-# --- Firebase Emulators / Functions (local, can contain secrets) ---
+# --- Firebase emulator logs / local configs ---
 .firebase/
 firebase-debug.log
 firestore-debug.log
@@ -93,9 +88,20 @@ storage-debug.log
 .functions-cache/
 .runtimeconfig.json
 
-# --- Optional: large binaries from builds ---
+# --- Sentry ---
+sentry.properties
+
+# --- Optional: large binary artifacts ---
 *.apk
 *.aab
 *.ipa
 *.app
 *.xcarchive
+
+# --- Backups / archives ---
+Archive/
+*.bak
+*.backup
+*.zip
+*.tar
+*.tar.gz

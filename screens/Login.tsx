@@ -16,8 +16,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   loginWithEmail,
-  phoneConfirm,
-  phoneStart,
   registerWithEmail,
   sendReset,
 } from "../services/authService";
@@ -48,10 +46,6 @@ export default function Login() { // ✅ not async
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [name, setName] = React.useState("");
-  const [phone, setPhone] = React.useState("+27");
-  const [code, setCode] = React.useState("");
-  const [confirmObj, setConfirmObj] = React.useState<any>(null);
-  const recaptchaRef = React.useRef<any>(null);
   const [busy, setBusy] = React.useState(false);
   const [msg, setMsg] = React.useState("");
 
@@ -156,51 +150,6 @@ export default function Login() { // ✅ not async
     }
   };
 
-  // ---------- PHONE ----------
-  const sendCode = async () => {
-    if (!phone || !phone.startsWith("+")) {
-      Alert.alert("Invalid phone", "Enter in E.164 format (e.g., +27...)");
-      return;
-    }
-    setBusy(true);
-    try {
-      const confirmation = await phoneStart(phone, recaptchaRef);
-      setConfirmObj(confirmation);
-      setMsg("Code sent. Check your SMS.");
-    } catch (e: any) {
-      Alert.alert("Phone auth failed", e?.message || String(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const confirmPhone = async () => {
-    if (!confirmObj || !code) { setMsg("Enter the 6-digit code."); return; }
-    setBusy(true);
-    try {
-      await phoneConfirm(confirmObj, code);
-      if (auth.currentUser) await ensureUserDoc(auth.currentUser); // ✅ ensure user doc
-      setMsg("Phone number verified.");
-    } catch (e: any) {
-      Alert.alert("Invalid code", e?.message || String(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  // Expo Recaptcha (native only)
-  const RecaptchaModal = () => {
-    if (Platform.OS === "web") return null;
-    const { FirebaseRecaptchaVerifierModal } = require("expo-firebase-recaptcha");
-    const { app } = require("../firebase");
-    return (
-      <FirebaseRecaptchaVerifierModal
-        ref={recaptchaRef}
-        firebaseConfig={app.options as any}
-      />
-    );
-  };
-
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
@@ -281,41 +230,6 @@ export default function Login() { // ✅ not async
               </View>
             )}
           </TouchableOpacity>
-        </View>
-
-        {/* Phone */}
-        <View style={styles.card}>
-          <RecaptchaModal />
-          <Text style={styles.h}>Sign in with Phone</Text>
-
-          <TextInput
-            placeholder="+27..."
-            placeholderTextColor="#BFD3EA"
-            value={phone}
-            onChangeText={setPhone}
-            style={styles.input}
-            keyboardType="phone-pad"
-          />
-
-          {!confirmObj ? (
-            <TouchableOpacity style={[styles.primaryBtn, shadow]} onPress={sendCode} disabled={busy}>
-              <Text style={styles.primaryBtnText}>{busy ? "Sending..." : "Send code"}</Text>
-            </TouchableOpacity>
-          ) : (
-            <>
-              <TextInput
-                placeholder="123456"
-                placeholderTextColor="#BFD3EA"
-                value={code}
-                onChangeText={setCode}
-                style={styles.input}
-                keyboardType="number-pad"
-              />
-              <TouchableOpacity style={[styles.primaryBtn, shadow]} onPress={confirmPhone} disabled={busy}>
-                <Text style={styles.primaryBtnText}>{busy ? "Verifying..." : "Confirm code"}</Text>
-              </TouchableOpacity>
-            </>
-          )}
         </View>
 
         {!!msg && (
