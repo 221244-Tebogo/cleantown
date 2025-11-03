@@ -100,7 +100,7 @@ export default function Login() { // ✅ not async
         const provider = new GoogleAuthProvider();
         provider.setCustomParameters({ prompt: "select_account" });
         await signInWithPopup(auth, provider);
-        if (auth.currentUser) await ensureUserDoc(auth.currentUser); // ✅
+        if (auth.currentUser) await ensureUserDoc(auth.currentUser); 
         setMsg("Signed in with Google.");
       } else {
         await promptAsync(); // handled in effect above

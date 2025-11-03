@@ -117,14 +117,6 @@ export default function Home() {
             <Text style={styles.infoBody}>Report litter, join cleanups, earn rewards</Text>
           </View>
         </View>
-
-        {/* Bottom nav (static for home) */}
-        <View style={styles.bottomNav}>
-          <NavIcon active icon={<Ionicons name="home" size={22} color={COLORS.primary} />} onPress={() => {}} />
-          <NavIcon icon={<FontAwesome5 name="recycle" size={20} color={COLORS.primary} />} onPress={() => navigation.navigate("Cleanups")} />
-          <NavIcon icon={<Ionicons name="trophy" size={22} color={COLORS.primary} />} onPress={() => navigation.navigate("Leaderboard")} />
-          <NavIcon icon={<Ionicons name="person-circle" size={24} color={COLORS.primary} />} onPress={() => navigation.navigate("Profile")} />
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -154,35 +146,6 @@ function Tile({
       <Text style={styles.tileText} numberOfLines={2}>
         {label}
       </Text>
-    </Pressable>
-  );
-}
-
-function NavIcon({
-  icon,
-  onPress,
-  active,
-}: {
-  icon: React.ReactNode;
-  onPress: () => void;
-  active?: boolean;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[
-        styles.navIcon,
-        active && {
-          backgroundColor: "#D6F1E1",
-          shadowColor: "#000",
-          shadowRadius: 6,
-          shadowOpacity: 0.08,
-          shadowOffset: { width: 0, height: 3 },
-          elevation: 2,
-        },
-      ]}
-    >
-      {icon}
     </Pressable>
   );
 }
@@ -253,16 +216,4 @@ const styles = StyleSheet.create({
   chip: { backgroundColor: COLORS.chipBg, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 10, alignSelf: "flex-start" },
   infoTitle: { color: COLORS.primary, fontSize: 18, fontWeight: "600", marginBottom: 2 },
   infoBody: { color: COLORS.muted, fontSize: 13.5 },
-
-  bottomNav: { flexDirection: "row", justifyContent: "space-between", marginTop: 14, paddingHorizontal: 10 },
-  navIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(0,0,0,0.06)",
-  },
 });

@@ -1,22 +1,8 @@
-// // index.js
-// import "react-native-gesture-handler"; // must be 1st
-
-// import { registerRootComponent } from "expo";
-// import App from "./App";
-
-// registerRootComponent(App);
-import React from "react";
-import ReactDOM from "react-dom/client";
+import "react-native-gesture-handler"; // must be 1st
+import { registerRootComponent } from "expo";
 import App from "./App.tsx";
 
-const rootElement = document.getElementById("root");
-if (!rootElement) {
-  throw new Error("Could not find root element to mount to");
-}
-
-const root = ReactDOM.createRoot(rootElement);
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+// registerRootComponent calls AppRegistry.registerComponent('main', () => App);
+// It also ensures that whether you load the app in Expo Go or in a native build,
+// the environment is set up appropriately
+registerRootComponent(App);

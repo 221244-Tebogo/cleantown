@@ -19,6 +19,7 @@ import {
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -333,6 +334,10 @@ export default function Leaderboard() {
   const top3 = useMemo(() => rows.slice(0, 3), [rows]);
   const rest = useMemo(() => rows.slice(3), [rows]);
 
+  const handleInvite = (name: string) => {
+    Alert.alert("Invite User", `You tapped on ${name}`);
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       {/* Header */}
@@ -374,10 +379,13 @@ export default function Leaderboard() {
         ListHeaderComponent={<View style={styles.listCardTop} />}
         renderItem={({ item, index }) => (
           <RowItem
+            id={item.id}
             rank={index + 4}
             name={item.displayName || "Anonymous"}
             score={item.totalPoints ?? 0}
             trend={trendFrom(item.lastRank, index + 4)}
+            onInvite={() => handleInvite(item.displayName || "Anonymous")}
+            isSelf={item.id === uid}
           />
         )}
         ListEmptyComponent={
@@ -458,7 +466,21 @@ function TabButton({ label, active, onPress }: { label: string; active?: boolean
   );
 }
 
-function RowItem({ rank, name, score, trend }: { rank: number; name: string; score: number; trend: -1 | 0 | 1 }) {
+function RowItem({
+  rank,
+  name,
+  score,
+  trend,
+  onInvite,
+  isSelf,
+}: {
+  rank: number;
+  name: string;
+  score: number;
+  trend: -1 | 0 | 1;
+  onInvite: () => void;
+  isSelf: boolean;
+}) {
   return (
     <View style={styles.row}>
       <Text style={styles.rank}>{rank}</Text>
@@ -470,6 +492,11 @@ function RowItem({ rank, name, score, trend }: { rank: number; name: string; sco
       <Text style={styles.score}>{score}</Text>
       {trend === 1 && <Ionicons name="caret-up" size={16} color="#2EBE65" style={{ marginLeft: 6 }} />}
       {trend === -1 && <Ionicons name="caret-down" size={16} color="#F44336" style={{ marginLeft: 6 }} />}
+      {!isSelf && (
+        <Pressable onPress={onInvite} style={{ marginLeft: 16 }}>
+          <Ionicons name="person-add-outline" size={20} color={COLORS.primary} />
+        </Pressable>
+      )}
     </View>
   );
 }
