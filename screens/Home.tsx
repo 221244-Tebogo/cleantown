@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AppBackground from "../components/AppBackground";
 import { useAuth } from "../context/auth";
 
+
 const TEXT = "#E6EEF7";
 const SUB = "#90A4B8";
 const CARD = "rgba(13, 22, 34, 0.7)";
