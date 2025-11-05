@@ -1,110 +1,131 @@
 // services/reportCreate.ts
-import { getAuth } from "firebase/auth";
+import * as FileSystem from "expo-file-system";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import {
-  getDownloadURL,
-  ref,
-  uploadBytesResumable,
-  UploadTask,
-} from "firebase/storage";
+import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 import { geohashForLocation } from "geofire-common";
-import { db, storage } from "../firebase";
+import { auth, db, storage } from "../firebase";
+import { awardPoints } from "./users";
 
-// Use legacy shim to silence current SDK deprecation logs
-
-type CreateReportInput = {
+type Args = {
   coords: { lat: number; lng: number };
-  category: string;
-  note: string;
-  photoUri: string; // file:// URI from Camera or ImagePicker
-  onProgress?: (percent: number) => void;
+  category?: "dumping" | "mixed" | string;
+  note?: string;
+  photoUri?: string; // optional
+  audioUri?: string; // optional (voice note)
+  onProgress?: (pct: number) => void;
 };
 
-function guessContentType(uri: string) {
-  const lower = uri.toLowerCase();
-  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
-  if (lower.endsWith(".png")) return "image/png";
-  if (lower.endsWith(".heic") || lower.endsWith(".heif")) return "image/heic";
-  if (lower.endsWith(".webp")) return "image/webp";
-  return "image/jpeg"; // safe default
-}
-
 async function uriToBlob(uri: string): Promise<Blob> {
-  // Expo runtime supports fetch(file://) → blob
-  const res = await fetch(uri);
-  if (!res.ok)
-    throw new Error(`Failed to read file: ${res.status} ${res.statusText}`);
-  return await res.blob();
+  if (/^(data:|blob:|https?:)/i.test(uri)) {
+    const res = await fetch(uri);
+    if (!res.ok) throw new Error("Could not read data from URI");
+    return await res.blob();
+  }
+  const base64 = await FileSystem.readAsStringAsync(uri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+  const bytes =
+    typeof atob === "function"
+      ? Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
+      : Uint8Array.from(Buffer.from(base64, "base64"));
+  // Keep contentType flexible: Storage rules already restrict image/audio.
+  return new Blob([bytes], { type: "application/octet-stream" });
 }
 
-export async function createReport(input: CreateReportInput) {
-  const { coords, category, note, photoUri, onProgress } = input;
-
-  // 0) Require auth (your Storage rules need request.auth.uid to match the path)
-  const auth = getAuth();
-  const uid = auth.currentUser?.uid;
-  if (!uid)
-    throw new Error("Not signed in. Please log in before submitting a report.");
-
-  // 1) Prepare upload target that matches your Storage rules: reports/<uid>/**
-  const ts = Date.now();
-  const ext =
-    photoUri.split("?")[0].split("#")[0].split(".").pop()?.toLowerCase() ||
-    "jpg";
-  const contentType = guessContentType(photoUri);
-  const filename = `${ts}.${ext}`;
-  const storagePath = `reports/${uid}/${filename}`; // ✅ matches rules
-  const storageRef = ref(storage, storagePath);
-
-  // 2) Read file and upload with metadata (contentType required by your rules)
-  const blob = await uriToBlob(photoUri);
-  const metadata = {
-    contentType,
-    cacheControl: "public,max-age=31536000",
-  };
-
-  const task: UploadTask = uploadBytesResumable(storageRef, blob, metadata);
-
+async function uploadWithProgress(
+  path: string,
+  blob: Blob,
+  onProgress?: (p: number) => void
+) {
+  const objectRef = ref(storage, path);
+  const task = uploadBytesResumable(objectRef, blob);
   await new Promise<void>((resolve, reject) => {
     task.on(
       "state_changed",
       (snap) => {
-        if (onProgress && snap.totalBytes > 0) {
+        if (onProgress) {
           const pct = Math.round(
             (snap.bytesTransferred / snap.totalBytes) * 100
           );
           onProgress(pct);
         }
       },
-      (err) => {
-        // Surface the real Firebase Storage error code to the UI/logs
-        console.log("Storage upload error:", {
-          code: (err as any)?.code,
-          message: (err as any)?.message,
-          name: (err as any)?.name,
-        });
-        reject(err);
-      },
+      reject,
       () => resolve()
     );
   });
+  const url = await getDownloadURL(task.snapshot.ref);
+  return { url, storagePath: objectRef.fullPath };
+}
 
-  const photoUrl = await getDownloadURL(storageRef);
+export async function createReport({
+  coords,
+  category = "dumping",
+  note = "",
+  photoUri,
+  audioUri,
+  onProgress,
+}: Args) {
+  const user = auth.currentUser;
+  if (!user) throw new Error("You must be signed in to submit a report.");
 
-  // 3) Create the Firestore document (your Firestore create rules are fine)
-  const geohash = geohashForLocation([coords.lat, coords.lng]);
+  // Allow ANY of photo OR audio OR note (at least one)
+  if (!photoUri && !audioUri && !note.trim()) {
+    throw new Error("Add a photo, voice note, or description.");
+  }
 
-  await addDoc(collection(db, "reports"), {
-    uid,
-    location: { lat: coords.lat, lng: coords.lng },
-    geohash,
+  const lat = Number(coords.lat),
+    lng = Number(coords.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng))
+    throw new Error("Invalid coordinates.");
+
+  const stamp = Date.now();
+  const day = new Date(stamp).toISOString().slice(0, 10);
+
+  let photoUrl: string | null = null;
+  let audioUrl: string | null = null;
+
+  if (photoUri) {
+    const blob = await uriToBlob(photoUri);
+    const { url } = await uploadWithProgress(
+      `reports/${user.uid}/photos/${day}/${stamp}.jpg`,
+      blob,
+      onProgress
+    );
+    photoUrl = url;
+  }
+
+  if (audioUri) {
+    const blob = await uriToBlob(audioUri);
+    const { url } = await uploadWithProgress(
+      `reports/${user.uid}/audio/${day}/${stamp}.m4a`,
+      blob,
+      onProgress
+    );
+    audioUrl = url;
+  }
+
+  const geohash = geohashForLocation([lat, lng]);
+
+  // Firestore doc — matches your rules (uid==auth.uid, location, geohash, createdAt)
+  const docRef = await addDoc(collection(db, "reports"), {
+    uid: user.uid,
     category,
-    description: note ?? "",
+    description: note,
     photoUrl,
+    audioUrl,
+    location: { lat, lng },
+    geohash,
     createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
     status: "open",
     stillThere: 0,
     notThere: 0,
-    lastPingAt: serverTimestamp(),
+    lastPingAt: null,
   });
+
+  // Points: +10 (your rules allow +1/+2/+10)
+  await awardPoints(user.uid, 10);
+
+  return { id: docRef.id, ok: true, addedPoints: 10 };
 }

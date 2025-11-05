@@ -24,6 +24,7 @@
     "@react-navigation/native-stack": "^7.6.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
+    "expo": "~54.0.22",
     "expo-audio": "~1.0.14",
     "expo-auth-session": "~7.0.8",
     "expo-av": "~16.0.7",
@@ -47,7 +48,9 @@
     "firebase": "^12.5.0",
     "geofire-common": "^6.0.0",
     "openai": "^6.8.1",
+    "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-native": "0.81.5",
     "react-native-add-calendar-event": "^5.0.0",
     "react-native-gesture-handler": "~2.28.0",
     "react-native-maps": "1.20.1",
@@ -56,10 +59,7 @@
     "react-native-screens": "~4.16.0",
     "react-native-svg": "15.12.1",
     "react-native-web": "~0.21.0",
-    "react-native-worklets": "0.5.1",
-    "expo": "~54.0.22",
-    "react": "19.1.0",
-    "react-native": "0.81.5"
+    "react-native-worklets": "0.5.1"
   },
   "devDependencies": {
     "@types/react": "~19.1.0",

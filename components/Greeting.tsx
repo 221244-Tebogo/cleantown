@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Platform } from "react-native";
 
 export default function Greeting({ name }: { name: string }) {
   return (
@@ -11,5 +11,15 @@ export default function Greeting({ name }: { name: string }) {
 
 const styles = StyleSheet.create({
   container: { paddingVertical: 8 },
-  text: { fontSize: 24, fontWeight: "bold", color: "#E6EEF7" },
+
+  text: {
+    fontSize: 28,
+    color: "#0B0F14", // main text-dark color
+    fontFamily: Platform.select({
+      ios: "CherryBomb-Regular",
+      android: "CherryBomb-Regular",
+      default: "CherryBomb-Regular",
+    }),
+    textAlign: "center",
+  },
 });

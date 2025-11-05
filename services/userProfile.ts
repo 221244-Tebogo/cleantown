@@ -15,6 +15,9 @@ export async function ensureUserDoc(user: User) {
       photoURL: user.photoURL ?? null,
       createdAt: serverTimestamp(),
       providerIds: user.providerData.map((p) => p.providerId),
+      totalPoints: 0,         
+      reports: 0,              
+      cleanups: 0,
     });
   }
 }

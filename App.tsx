@@ -1,3 +1,4 @@
+// App.tsx
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -23,27 +24,63 @@ import { AuthProvider } from "./context/auth";
 
 // Screens
 import SplashAnimation from "./screens/Animation";
-import Camera from "./screens/Camera";
 import Home from "./screens/Home";
-import Listen from "./screens/Listen";
+import Leaderboard from "./screens/Leaderboard";
 import Login from "./screens/Login";
 import MapShare from "./screens/MapShare";
 import Profile from "./screens/Profile";
 import Registration from "./screens/Registration";
 import Settings from "./screens/Settings";
-import VoiceApp from "./screens/VoiceApp";
 
 // --- NAVIGATORS ---
-const RootStack = createNativeStackNavigator();
 const AuthStack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
+const HomeStackNav = createNativeStackNavigator();
+const MapStackNav = createNativeStackNavigator();
+const LeaderboardStackNav = createNativeStackNavigator();
+const ProfileStackNav = createNativeStackNavigator();
+
 const ONBOARD_KEY = "@seen_onboarding_v1";
 
-// Hold the native splash until we're ready
+// Keep native splash until JS is ready
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
-// Inline MainTabs to avoid missing imports/files
+// ----- Per-tab stacks (tab bar stays visible) -----
+function HomeStack() {
+  return (
+    <HomeStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <HomeStackNav.Screen name="HomeIndex" component={Home} />
+    </HomeStackNav.Navigator>
+  );
+}
+
+function MapStack() {
+  return (
+    <MapStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <MapStackNav.Screen name="MapIndex" component={MapShare} />
+    </MapStackNav.Navigator>
+  );
+}
+
+function LeaderboardStack() { 
+  return (
+    <LeaderboardStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <LeaderboardStackNav.Screen name="LeaderboardIndex" component={Leaderboard} />
+    </LeaderboardStackNav.Navigator>
+  );
+}
+
+function ProfileStack() {
+  return (
+    <ProfileStackNav.Navigator screenOptions={{ headerShown: false }}>
+      <ProfileStackNav.Screen name="ProfileIndex" component={Profile} />
+      <ProfileStackNav.Screen name="Settings" component={Settings} />
+    </ProfileStackNav.Navigator>
+  );
+}
+
+// ----- Tabs shown after login -----
 function MainTabs() {
   const bg = "#0B284A";
   return (
@@ -66,12 +103,16 @@ function MainTabs() {
           switch (route.name) {
             case "Home":
               return <Ionicons name={focused ? "home" : "home-outline"} size={s} color={color} />;
-            case "MapShare":
+            case "Map":
               return <Ionicons name={focused ? "map" : "map-outline"} size={s} color={color} />;
-            case "Camera":
-              return <MaterialCommunityIcons name={focused ? "camera" : "camera-outline"} size={s} color={color} />;
-            case "Listen":
-              return <Ionicons name={focused ? "mic" : "mic-outline"} size={s} color={color} />;
+            case "Leaderboard": // <-- NEW
+              return (
+                <MaterialCommunityIcons
+                  name={focused ? "trophy" : "trophy-outline"}
+                  size={s}
+                  color={color}
+                />
+              );
             case "Profile":
               return <Ionicons name={focused ? "person" : "person-outline"} size={s} color={color} />;
             default:
@@ -80,11 +121,10 @@ function MainTabs() {
         },
       })}
     >
-      <Tab.Screen name="Home" component={Home} options={{ title: "Home" }} />
-      <Tab.Screen name="MapShare" component={MapShare} options={{ title: "Map" }} />
-      <Tab.Screen name="Camera" component={Camera} options={{ title: "Report" }} />
-      <Tab.Screen name="Listen" component={Listen} options={{ title: "Listen" }} />
-      <Tab.Screen name="Profile" component={Profile} options={{ title: "Profile" }} />
+      <Tab.Screen name="Home" component={HomeStack} />
+      <Tab.Screen name="Map" component={MapStack} />
+      <Tab.Screen name="Leaderboard" component={LeaderboardStack} />{/* <-- NEW */}
+      <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
   );
 }
@@ -95,7 +135,7 @@ export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [user, setUser] = useState<User | null | undefined>(undefined);
 
-  // Minimal boot
+  // Boot
   useEffect(() => {
     (async () => {
       try {
@@ -115,21 +155,22 @@ export default function App() {
     return unsub;
   }, []);
 
-  // Hide native splash once "ready"
+  // Hide native splash when ready
   useEffect(() => {
     if (ready) {
       (async () => {
-        try { await SplashScreen.hideAsync(); } catch {}
+        try {
+          await SplashScreen.hideAsync();
+        } catch {}
       })();
     }
   }, [ready]);
 
-  // Fail-safe: never block forever on custom splash
+  // Safety timeout for custom splash
   useEffect(() => {
-    if (showSplash) {
-      const t = setTimeout(() => setShowSplash(false), 3500);
-      return () => clearTimeout(t);
-    }
+    if (!showSplash) return;
+    const t = setTimeout(() => setShowSplash(false), 3500);
+    return () => clearTimeout(t);
   }, [showSplash]);
 
   if (!ready || seen === null || user === undefined) {
@@ -157,13 +198,7 @@ export default function App() {
                 ) : seen ? (
                   <NavigationContainer theme={isDark ? NavDark : themeLight}>
                     {user ? (
-                      <RootStack.Navigator screenOptions={{ headerShown: false }}>
-                        {/* Tabs as app root */}
-                        <RootStack.Screen name="MainTabs" component={MainTabs} />
-                        {/* Extra stack routes accessible from any tab */}
-                        <RootStack.Screen name="Settings" component={Settings} />
-                        <RootStack.Screen name="VoiceApp" component={VoiceApp} />
-                      </RootStack.Navigator>
+                      <MainTabs />
                     ) : (
                       <AuthStack.Navigator screenOptions={{ headerShown: false }}>
                         <AuthStack.Screen name="Login" component={Login} />
@@ -172,11 +207,14 @@ export default function App() {
                     )}
                   </NavigationContainer>
                 ) : (
-                  // Your Onboarding screen must call onDone() to flip seen=true
-                  <SplashAnimation onDone={async () => {
-                    try { await AsyncStorage.setItem(ONBOARD_KEY, "1"); } catch {}
-                    setSeen(true);
-                  }} />
+                  <SplashAnimation
+                    onDone={async () => {
+                      try {
+                        await AsyncStorage.setItem(ONBOARD_KEY, "1");
+                      } catch {}
+                      setSeen(true);
+                    }}
+                  />
                 )}
               </View>
             )}

@@ -1,39 +1,36 @@
+// services/cleanups.ts
 import { getAuth } from "firebase/auth";
 import {
   addDoc,
   collection,
   deleteDoc,
   doc,
-  getDoc,
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
-  setDoc,
   Timestamp,
   updateDoc,
 } from "firebase/firestore";
-import { db } from "../firebase"; // ← your single firebase module
+import { db } from "../firebase";
+import { awardPoints } from "./users"; // <-- NEW
 
 const CLEANUPS = "cleanups";
 
-// ---------- CREATE (service pulls auth uid) ----------
+// ---------- CREATE ----------
 export async function createCleanup({
   title,
-  when, // Date | "YYYY-MM-DD" | "YYYY-MM-DD HH:mm"
-  description, // optional
+  when,
+  description,
 }: {
   title: string;
   when: string | Date;
   description?: string;
 }) {
   const uid = getAuth().currentUser?.uid;
-  if (!uid) {
-    console.log("[createCleanup] No auth user found");
-    throw new Error("Not signed in.");
-  }
+  if (!uid) throw new Error("Not signed in.");
 
-  // Parse to Date → Firestore Timestamp
   let dateObj: Date;
   if (when instanceof Date) {
     dateObj = when;
@@ -44,7 +41,6 @@ export async function createCleanup({
       : new Date(`${when}T00:00:00`);
   }
   if (isNaN(dateObj.getTime())) {
-    console.log("[createCleanup] Invalid date input:", when);
     throw new Error("Invalid date/time. Use YYYY-MM-DD or YYYY-MM-DD HH:mm");
   }
   const scheduledAt = Timestamp.fromDate(dateObj);
@@ -59,7 +55,6 @@ export async function createCleanup({
     status: "planned" as const,
   };
 
-  console.log("[createCleanup] payload", payload);
   const ref = await addDoc(collection(db, CLEANUPS), payload);
   return ref.id;
 }
@@ -105,24 +100,45 @@ export async function deleteCleanup(id: string) {
   await deleteDoc(doc(db, CLEANUPS, id));
 }
 
-// ---------- JOIN / LEAVE ----------
+// ---------- JOIN / LEAVE (awards points on first join) ----------
 export async function joinCleanup(
   cleanupId: string,
   displayName?: string | null
 ) {
   const uid = getAuth().currentUser?.uid;
   if (!uid) throw new Error("Not signed in.");
-  const attendeeRef = doc(db, CLEANUPS, cleanupId, "attendees", uid);
-  const exists = (await getDoc(attendeeRef)).exists();
 
-  if (!exists) {
-    await setDoc(attendeeRef, {
-      displayName: displayName ?? null,
-      joinedAt: serverTimestamp(),
-    });
-  } else {
-    await updateDoc(attendeeRef, { displayName: displayName ?? null });
+  const attendeeRef = doc(db, CLEANUPS, cleanupId, "attendees", uid);
+
+  // Use a transaction to avoid race conditions (double-taps)
+  const { firstJoin } = await runTransaction(db, async (tx) => {
+    const snap = await tx.get(attendeeRef);
+    if (!snap.exists()) {
+      // Firestore rules require: joinedAt == request.time (serverTimestamp() is correct)
+      tx.set(attendeeRef, {
+        displayName: displayName ?? null,
+        joinedAt: serverTimestamp(),
+      });
+      return { firstJoin: true };
+    } else {
+      tx.update(attendeeRef, { displayName: displayName ?? null });
+      return { firstJoin: false };
+    }
+  });
+
+  let addedPoints = 0;
+  if (firstJoin) {
+    try {
+      // Your users rule allows +1 | +2 | +10 only.
+      await awardPoints(uid, 2); // +2 for joining a cleanup
+      addedPoints = 2;
+    } catch (e) {
+      // Keep silent if points bump fails; the join still stands.
+      console.log("awardPoints(+2) failed:", (e as any)?.message || e);
+    }
   }
+
+  return { ok: true, addedPoints, firstJoin };
 }
 
 export async function leaveCleanup(cleanupId: string) {
