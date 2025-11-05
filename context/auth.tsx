@@ -10,7 +10,14 @@ import {
   updateProfile,
   User,
 } from "firebase/auth";
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { auth } from "../firebase";
 import { ensureUserDoc } from "../services/userProfile";
 
@@ -24,7 +31,11 @@ type Ctx = {
   user: User | null;
   isLoading: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUpWithEmail: (email: string, password: string, displayName?: string) => Promise<void>;
+  signUpWithEmail: (
+    email: string,
+    password: string,
+    displayName?: string
+  ) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   googleRequest: Google.AuthRequest | null;
@@ -37,13 +48,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Email / Password
+  // ---------- Email / Password ----------
   const signInWithEmail = async (email: string, password: string) => {
     const cred = await signInWithEmailAndPassword(auth, email, password);
     await ensureUserDoc(cred.user);
   };
 
-  const signUpWithEmail = async (email: string, password: string, displayName?: string) => {
+  const signUpWithEmail = async (
+    email: string,
+    password: string,
+    displayName?: string
+  ) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     if (displayName) {
       await updateProfile(cred.user, { displayName });
@@ -59,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await fbSignOut(auth);
   };
 
-  // Subscribe to user
+  // ---------- Auth state subscription ----------
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u ?? null);
@@ -68,8 +83,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsub;
   }, []);
 
-  // Google unified flow (works on native + web without popups)
+  // ---------- Google unified flow (native + web, no popups) ----------
+  const inFlight = useRef(false); // prevents double-start of AuthSession on iOS
   const redirectUri = makeRedirectUri({ useProxy: true });
+
   const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID!,
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
@@ -96,21 +113,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error("Google sign-in failed:", e);
         } finally {
           setIsLoading(false);
+          inFlight.current = false; // release lock on finish
         }
+      } else if (response?.type && response.type !== "incomplete") {
+        // cancelled / error / dismissed
+        inFlight.current = false; // release lock on non-success exits
       }
     })();
   }, [response]);
 
-  const value = useMemo<Ctx>(() => ({
-    user,
-    isLoading,
-    signInWithEmail,
-    signUpWithEmail,
-    resetPassword,
-    signOut,
-    googleRequest: request,
-    googlePromptAsync: async () => { await promptAsync(); },
-  }), [user, isLoading, request, promptAsync]);
+  const value = useMemo<Ctx>(
+    () => ({
+      user,
+      isLoading,
+      signInWithEmail,
+      signUpWithEmail,
+      resetPassword,
+      signOut,
+      googleRequest: request,
+      googlePromptAsync: async () => {
+        if (!request) return;
+        if (inFlight.current) return; // guard: prevent double-prompt
+        inFlight.current = true;
+        try {
+          await promptAsync();
+        } catch (e) {
+          inFlight.current = false;
+          throw e;
+        }
+      },
+    }),
+    [user, isLoading, request, promptAsync]
+  );
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }

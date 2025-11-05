@@ -1,9 +1,9 @@
-import React, { useCallback, useRef, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image, Alert, ActivityIndicator, Platform } from "react-native";
-import { CameraView, CameraType, FlashMode, useCameraPermissions } from "expo-camera";
-import * as MediaLibrary from "expo-media-library";
-import { useIsFocused, useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+import { useIsFocused, useNavigation } from "@react-navigation/native";
+import { CameraType, CameraView, FlashMode, useCameraPermissions } from "expo-camera";
+import * as MediaLibrary from "expo-media-library";
+import React, { useCallback, useRef, useState } from "react";
+import { ActivityIndicator, Alert, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 const YELLOW = "#FBBC05";
 

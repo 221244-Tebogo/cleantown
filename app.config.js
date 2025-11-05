@@ -1,3 +1,4 @@
+// app.config.js
 import "dotenv/config";
 
 export default {
@@ -22,8 +23,11 @@ export default {
           "We need microphone access for voice features.",
         NSSpeechRecognitionUsageDescription:
           "We need speech recognition to enable voice commands.",
+        NSPhotoLibraryUsageDescription:
+          "We need photo access to let you upload images.",
         ITSAppUsesNonExemptEncryption: false,
       },
+      // No Google Maps SDK on iOS → we’ll use Apple Maps there.
     },
 
     android: {
@@ -47,6 +51,12 @@ export default {
         foregroundImage: "./assets/images/android-icon-foreground.png",
         backgroundColor: "#0B284A",
       },
+      // ✅ Expo supports injecting the Android Google Maps key without any plugin
+      config: {
+        googleMaps: {
+          apiKey: process.env.ANDROID_MAPS_KEY,
+        },
+      },
     },
 
     web: {
@@ -54,7 +64,6 @@ export default {
     },
 
     plugins: [
-      // "expo-router", // ❌ removed on purpose
       "expo-font",
       [
         "expo-splash-screen",
@@ -64,6 +73,7 @@ export default {
           backgroundColor: "#FBBC05",
         },
       ],
+      // ⬅️ removed "react-native-maps" plugin to avoid PluginError
     ],
 
     extra: {
@@ -83,7 +93,7 @@ export default {
       },
       geminiApiKey: process.env.EXPO_PUBLIC_GEMINI_API_KEY,
       maps: {
-        ios: process.env.IOS_MAPS_KEY,
+        ios: process.env.IOS_MAPS_KEY, // kept for future, unused right now on iOS
         android: process.env.ANDROID_MAPS_KEY,
       },
       environment: process.env.EXPO_PUBLIC_ENV || "development",

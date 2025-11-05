@@ -1,17 +1,16 @@
+// screens/Report.tsx
 import { Ionicons } from "@expo/vector-icons";
-import { useIsFocused } from "@react-navigation/native";
-import { CameraType, CameraView, FlashMode, useCameraPermissions } from "expo-camera";
+import { CameraView, useCameraPermissions, type CameraType, type FlashMode } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   Alert,
-  Button,
   Image,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import AppBackground from "../components/AppBackground";
@@ -20,218 +19,176 @@ import { createReport } from "../services/reportCreate";
 const YELLOW = "#FBBC05";
 
 export default function Report() {
-  // Report form state
+  // form state
   const [note, setNote] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
   const [status, setStatus] = useState("");
 
-  // Camera view state
+  // camera state
   const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const [cameraFacing, setCameraFacing] = useState<CameraType>("back");
+  const [facing, setFacing] = useState<CameraType>("back");
   const [flash, setFlash] = useState<FlashMode>("off");
-  const [permission, requestPermission] = useCameraPermissions();
+  const [camPerm, requestCamPerm] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
-  const isFocused = useIsFocused();
+
+  const takePhoto = async () => {
+    try {
+      const pic = await cameraRef.current?.takePictureAsync({
+        quality: 0.9,
+        skipProcessing: Platform.OS === "android",
+      });
+      if (!pic?.uri) throw new Error("No photo URI");
+      setPhoto(pic.uri);
+      setIsCameraOpen(false);
+    } catch (e: any) {
+      Alert.alert("Camera error", e?.message || String(e));
+    }
+  };
 
   const pickImage = async () => {
     try {
       if (Platform.OS !== "web") {
         const lib = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (lib.status !== "granted") {
-          Alert.alert("Permission needed", "We need access to your photos.");
+          Alert.alert("Photos permission needed", "Allow access to pick an image.");
           return;
         }
       }
-      const result = await ImagePicker.launchImageLibraryAsync({
+      const res = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.7,
+        quality: 0.8,
       });
-      if (!result.canceled && result.assets?.length > 0) {
-        setPhoto(result.assets[0].uri);
-      }
+      if (!res.canceled && res.assets?.length) setPhoto(res.assets[0].uri);
     } catch (e: any) {
       Alert.alert("Pick image failed", e?.message || String(e));
     }
   };
 
-  const handleTakePhoto = useCallback(async () => {
-    try {
-      if (!cameraRef.current) return;
-      const pic = await cameraRef.current.takePictureAsync({ quality: 1 });
-      setPhoto(pic.uri); // Set photo for the report
-      setIsCameraOpen(false); // Go back to the form
-    } catch (e: any) {
-      Alert.alert("Error", e?.message ?? "Failed to take photo.");
-    }
-  }, []);
-
-  const handleSubmit = async () => {
-    if (!photo) return Alert.alert("No photo", "Please attach a photo.");
-
+  const submit = async () => {
+    if (!photo) return Alert.alert("Missing photo", "Please attach a photo.");
     setStatus("Uploading 0%…");
     try {
       await createReport({
-        coords: { lat: -25.746, lng: 28.188 }, // Placeholder coords
+        coords: { lat: -26.2708, lng: 28.1123 }, // TODO: pass real coords from Location
         category: "mixed",
         note,
         photoUri: photo,
         onProgress: (p) => setStatus(`Uploading ${p}%…`),
       });
-      setStatus("✅ Report submitted successfully!");
+      setStatus("✅ Report submitted");
       setNote("");
       setPhoto(null);
     } catch (e: any) {
       console.error(e);
-      setStatus("❌ Failed to submit report.");
+      setStatus("❌ Failed to submit");
       Alert.alert("Submit failed", e?.message || String(e));
     }
   };
 
-  // --- Camera UI ---
+  // Camera sheet
   if (isCameraOpen) {
-    if (!permission) return <View />;
-    if (!permission.granted) {
+    if (!camPerm) return <View style={{ flex: 1, backgroundColor: "#000" }} />;
+    if (!camPerm.granted) {
       return (
-        <View style={styles.cameraCenter}>
-          <Text style={styles.info}>We need your permission to use the camera.</Text>
-          <Button onPress={requestPermission} title="Grant Permission" />
+        <View style={s.center}>
+          <Text style={s.centerMsg}>We need camera permission.</Text>
+          <Pressable style={s.primary} onPress={requestCamPerm}><Text style={s.btnTxt}>Grant Camera</Text></Pressable>
         </View>
       );
     }
+
     return (
-      <CameraView ref={cameraRef} style={styles.fill} facing={cameraFacing} flash={flash} active={isFocused}>
-        <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => setFlash((f) => (f === "off" ? "on" : "off"))} style={styles.pillBtn}>
-            <Text style={styles.pillText}>Flash: {flash.toUpperCase()}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setCameraFacing((c) => (c === "back" ? "front" : "back"))}
-            style={styles.pillBtn}
-          >
-            <Text style={styles.pillText}>Flip</Text>
-          </TouchableOpacity>
+      <View style={{ flex: 1, backgroundColor: "#000" }}>
+        {/* Camera occupies the layer */}
+        <CameraView
+          ref={cameraRef}
+          style={s.camera}
+          mode="picture"       // ✅ photo mode
+          facing={facing}
+          flash={flash}
+        />
+        {/* Overlay as sibling (NOT children of CameraView) */}
+        <View pointerEvents="box-none" style={s.overlay}>
+          <View style={s.topBar}>
+            <Pressable onPress={() => setFlash((f) => (f === "off" ? "on" : f === "on" ? "auto" : "off"))} style={s.pill}>
+              <Text style={s.pillTxt}>Flash: {flash.toUpperCase()}</Text>
+            </Pressable>
+            <Pressable onPress={() => setFacing((c) => (c === "back" ? "front" : "back"))} style={s.pill}>
+              <Text style={s.pillTxt}>Flip</Text>
+            </Pressable>
+          </View>
+
+          <View style={s.bottomBar}>
+            <Pressable onPress={() => setIsCameraOpen(false)} style={s.navChip}>
+              <Ionicons name="chevron-back" size={18} color="#0B0F14" style={{ marginRight: 6 }} />
+              <Text style={s.navChipTxt}>Back</Text>
+            </Pressable>
+            <Pressable onPress={takePhoto} style={s.shutterOuter} accessibilityLabel="Take picture">
+              <View style={s.shutterInner} />
+            </Pressable>
+          </View>
         </View>
-        <View style={styles.bottomBar}>
-          <TouchableOpacity onPress={() => setIsCameraOpen(false)} style={styles.navChip}>
-            <Ionicons name="chevron-back" size={18} color="#0B0F14" style={{ marginRight: 6 }} />
-            <Text style={styles.navChipText}>Back</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleTakePhoto} style={styles.shutterOuter} activeOpacity={0.85}>
-            <View style={styles.shutterInner} />
-          </TouchableOpacity>
-        </View>
-      </CameraView>
+      </View>
     );
   }
 
-  // --- Report Form UI ---
+  // Form
   return (
-    <View style={styles.container}>
+    <View style={s.container}>
       <AppBackground />
-      <Text style={styles.title}>Submit a Report</Text>
+      <Text style={s.h}>Submit a Report</Text>
+
       <TextInput
-        placeholder="Describe the issue..."
+        placeholder="Describe the issue…"
         value={note}
         onChangeText={setNote}
-        style={styles.input}
+        style={s.input}
         multiline
       />
-      {photo && <Image source={{ uri: photo }} style={styles.image} />}
-      <View style={styles.buttonContainer}>
-        <Button title="Take Photo" onPress={() => setIsCameraOpen(true)} />
-        <Button title="Pick from Library" onPress={pickImage} />
+
+      {photo && <Image source={{ uri: photo }} style={s.preview} />}
+
+      <View style={s.row}>
+        <Pressable style={s.secondary} onPress={() => setIsCameraOpen(true)}>
+          <Text style={s.btnTxt}>Take Photo</Text>
+        </Pressable>
+        <Pressable style={s.secondary} onPress={pickImage}>
+          <Text style={s.btnTxt}>Pick from Library</Text>
+        </Pressable>
       </View>
-      <View style={{ marginTop: 10, paddingHorizontal: 40 }}>
-        <Button title="Submit Report" onPress={handleSubmit} disabled={!photo} color="#34C759" />
-      </View>
-      {!!status && <Text style={styles.status}>{status}</Text>}
+
+      <Pressable style={[s.primary, { marginTop: 12, opacity: photo ? 1 : 0.6 }]} onPress={submit} disabled={!photo}>
+        <Text style={s.btnTxt}>Submit Report</Text>
+      </Pressable>
+
+      {!!status && <Text style={s.status}>{status}</Text>}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: "#000" },
-  container: {
-    flex: 1,
-    padding: 20,
-    justifyContent: "center",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
-    color: "#333",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ced4da",
-    backgroundColor: "#fff",
-    marginVertical: 10,
-    padding: 15,
-    borderRadius: 8,
-    fontSize: 16,
-    minHeight: 80,
-  },
-  image: {
-    width: "100%",
-    height: 250,
-    marginVertical: 20,
-    borderRadius: 8,
-    alignSelf: "center",
-    backgroundColor: "#e9ecef",
-  },
-  buttonContainer: {
-    flexDirection: "row",
-    justifyContent: "space-evenly",
-    marginVertical: 10,
-  },
-  status: {
-    marginTop: 20,
-    textAlign: "center",
-    fontSize: 16,
-    color: "#6c757d",
-    fontWeight: "500",
-  },
-  // Camera Styles
-  cameraCenter: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: "#000" },
-  info: { color: "#fff", fontSize: 16, marginBottom: 12, textAlign: "center" },
-  topBar: {
-    position: "absolute",
-    top: 40,
-    right: 16,
-    flexDirection: "row",
-    gap: 8,
-  },
-  bottomBar: {
-    position: "absolute",
-    bottom: 40,
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    paddingHorizontal: 20,
-  },
-  pillBtn: { backgroundColor: "rgba(0,0,0,0.5)", paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999 },
-  pillText: { color: "#fff", fontWeight: "600" },
-  navChip: {
-    backgroundColor: YELLOW,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  navChipText: { color: "#0B0F14", fontSize: 12, fontWeight: "500" },
-  shutterOuter: {
-    height: 76,
-    width: 76,
-    borderRadius: 999,
-    borderWidth: 6,
-    borderColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+const s = StyleSheet.create({
+  container: { flex: 1, padding: 20, justifyContent: "center" },
+  h: { fontSize: 22, fontWeight: "800", marginBottom: 10, color: "#fff", textAlign: "center" },
+  input: { backgroundColor: "#fff", borderRadius: 10, padding: 12, minHeight: 90, color: "#000" },
+  preview: { width: "100%", height: 260, borderRadius: 12, marginVertical: 16, backgroundColor: "#e9ecef" },
+  row: { flexDirection: "row", justifyContent: "space-between", gap: 8 },
+  primary: { backgroundColor: "#2d6cdf", paddingVertical: 12, borderRadius: 12, alignItems: "center" },
+  secondary: { backgroundColor: "#1f334d", paddingVertical: 12, borderRadius: 12, alignItems: "center", flex: 1 },
+  btnTxt: { color: "#fff", fontWeight: "800" },
+  status: { marginTop: 14, textAlign: "center", color: "#cfd8e3", fontWeight: "600" },
+
+  // Camera overlay
+  camera: { ...StyleSheet.absoluteFillObject },
+  overlay: { ...StyleSheet.absoluteFillObject, justifyContent: "space-between" },
+  topBar: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 14, paddingTop: 16 },
+  pill: { backgroundColor: "rgba(0,0,0,0.45)", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999 },
+  pillTxt: { color: "#fff", fontWeight: "700" },
+  bottomBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-around", paddingBottom: 28 },
+  navChip: { backgroundColor: YELLOW, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, flexDirection: "row", alignItems: "center" },
+  navChipTxt: { color: "#0B0F14", fontSize: 12, fontWeight: "700" },
+  shutterOuter: { height: 76, width: 76, borderRadius: 999, borderWidth: 6, borderColor: "#fff", alignItems: "center", justifyContent: "center" },
   shutterInner: { height: 56, width: 56, borderRadius: 999, backgroundColor: "#fff" },
+
+  center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#000", padding: 24 },
+  centerMsg: { color: "#fff", marginBottom: 12, fontWeight: "700" },
 });
