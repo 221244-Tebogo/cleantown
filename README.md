@@ -1,50 +1,39 @@
-# Welcome to your Expo app 👋
+<p align="center">
+  <img src="assets/images/logo.png" alt="Clean Town Logo" width="100"/>
+</p>
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+# Clean Town 👋
 
-## Get started
+## Overview
 
-1. Install dependencies
+Clean Town is a gamified civic mobile app designed to combat the growing issue of illegal dumping in South African townships. It enables residents to report litter through geotagged photos, while AI helps classify trash types and identify dumping hotspots. Recyclers can then use smart routes to collect profitable materials, and municipalities gain access to actionable insights for resource allocation.
 
-   ```bash
-   npm install
-   ```
+## The Problem
 
-2. Start the app
+Illegal dumping in South African townships causes blocked drains, unsafe streets, flooding, pollution, and health risks. Current municipal response is reactive because they lack real-time, location-based data. Township youth view cleaning as punishment, and informal recyclers waste hours roaming aimlessly to find sellable materials.
 
-   ```bash
-   npx expo start
-   ```
+## The Opportunity
 
-In the output, you'll find options to open the app in a
+Clean Town presents an opportunity to engage different groups:
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+*   **Youth:** As tech-savvy and socially active individuals, they can be motivated with recognition and rewards.
+*   **Recyclers:** They can benefit from efficient collection routes and pricing information.
+*   **Municipalities:** They gain actionable insights and predictive patterns to deploy limited resources effectively.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Target Market & MVP Users
 
-## Get a fresh project
+(Details to be added)
 
-When you're ready, run:
+## Get Started
 
-```bash
-npm run reset-project
-```
+1.  **Install dependencies**
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+    ```bash
+    npm install
+    ```
 
-## Learn more
+2.  **Start the app**
 
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+    ```bash
+    npx expo start
+    ```

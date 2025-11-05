@@ -1,43 +1,76 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
-# dependencies
+# ── Dependencies
 node_modules/
 
-# Expo
+# ── Expo / Web outputs
 .expo/
+.expo-shared/
 dist/
 web-build/
 expo-env.d.ts
 
-# Native
-.kotlin/
-*.orig.*
+# ── Environment files (never commit)
+.env
+.env*.local
+*.env
+*.env.*
+
+# ── Native build artifacts (generated)
+ios/
+android/
+.gradle/
+Pods/
+DerivedData/
+*.xcworkspace/
+*.xcodeproj/project.xcworkspace/
+*.pbxproj
+
+# ── Native credentials / signing (never commit)
 *.jks
+*.keystore
+keystore.properties
 *.p8
 *.p12
+*.p10
+*.pem
+*.cer
+*.crt
 *.key
 *.mobileprovision
+*.orig.*
 
-# Metro
+# ── Google/Firebase app configs (optional to commit, safer to ignore)
+google-services.json
+GoogleService-Info.plist
+serviceAccountKey.json
+firebase-debug.log
+
+# ── Metro
 .metro-health-check*
 
-# debug
+# ── Debug & logs
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+pnpm-debug.log*
+*.log
 
-# macOS
+# ── OS / editor junk
 .DS_Store
-*.pem
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.iml
 
-# local env files
-.env*.local
-
-# typescript
+# ── TypeScript
 *.tsbuildinfo
 
+# ── Test / coverage
+coverage/
+.junit/*
+reports/
+
+# ── Tooling & misc
 app-example
 
-# generated native folders
-/ios
-/android
+Archive.zip

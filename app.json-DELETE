@@ -1,0 +1,74 @@
+{
+  "expo": {
+    "name": "cleantown",
+    "slug": "cleantown",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "cleantown",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": false
+    },
+    "owner": "tebogo_r",
+    "extra": {
+      "EXPO_PUBLIC_EXPO_OWNER": "tebogo_r",
+      "EXPO_PUBLIC_EXPO_SLUG": "cleantown",
+      "EXPO_PUBLIC_ENV": "development",
+      "EXPO_PUBLIC_GEMINI_API_KEY": "AIzaSyDAFYHY7HWMtV3Eveq5ehtoJ6rDQnylxZA",
+      "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyAi7MVTxhnAZ0fWUcrNEicuEsBR1dfqCdY",
+      "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "cleantown-ad312.firebaseapp.com",
+      "EXPO_PUBLIC_FIREBASE_DATABASE_URL": "https://cleantown-ad312-default-rtdb.asia-southeast1.firebasedatabase.app",
+      "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "cleantown-ad312",
+      "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "cleantown-ad312.appspot.com",
+      "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "907366756783",
+      "EXPO_PUBLIC_FIREBASE_APP_ID": "1:907366756783:web:472fe1ac2a80177a90ff5a",
+      "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "907366756783-qs017totd90fpkcd2c67f0jcmktb5mur.apps.googleusercontent.com",
+      "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "907366756783-de643vqdll68vk24e8utvfegqtsakfpu.apps.googleusercontent.com",
+      "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "330731335331-0ep09a1l65ln9fnsur3ha37a90vnkb2u.apps.googleusercontent.com",
+      "firebase": {
+        "apiKey": "AIzaSyAi7MVTxhnAZ0fWUcrNEicuEsBR1dfqCdY",
+        "authDomain": "cleantown-ad312.firebaseapp.com",
+        "databaseURL": "https://cleantown-ad312-default-rtdb.asia-southeast1.firebasedatabase.app",
+        "projectId": "cleantown-ad312",
+        "storageBucket": "cleantown-ad312.appspot.com",
+        "messagingSenderId": "907366756783",
+        "appId": "1:907366756783:web:472fe1ac2a80177a90ff5a"
+      }
+    }
+  }
+}
