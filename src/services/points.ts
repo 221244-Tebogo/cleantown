@@ -19,7 +19,7 @@ export const pointsActions = {
       const userSnap = await getDoc(userRef);
 
       if (!userSnap.exists()) {
-        console.log("🎯 Creating new user document");
+        console.log("Creating new user document");
         await setDoc(userRef, {
           uid: userId,
           points: pointsToAdd,
@@ -29,8 +29,8 @@ export const pointsActions = {
           lastUpdated: serverTimestamp(),
         });
       } else {
-        console.log("🎯 Updating existing user points");
-        // Update both fields to ensure consistency
+        console.log("Updating existing user points");
+
         await updateDoc(userRef, {
           points: increment(pointsToAdd),
           totalPoints: increment(pointsToAdd),
@@ -70,7 +70,7 @@ export const pointsActions = {
       }
 
       console.log(
-        `🎯 Added ${pointsToAdd} points for confirming status (${status})`
+        `Added ${pointsToAdd} points for confirming status (${status})`
       );
       return true;
     } catch (error) {
@@ -101,13 +101,75 @@ export const pointsActions = {
 
         if (Object.keys(updates).length > 0) {
           await updateDoc(userRef, updates);
-          console.log("🔧 Fixed user points:", updates);
+          console.log("Fixed user points:", updates);
         }
       }
 
       return true;
     } catch (error) {
       console.error("Error fixing user points:", error);
+      return false;
+    }
+  },
+
+  async createEvent(userId: string) {
+    try {
+      const userRef = doc(db, "users", userId);
+      const userSnap = await getDoc(userRef);
+      const pointsToAdd = 80;
+
+      if (!userSnap.exists()) {
+        await setDoc(userRef, {
+          uid: userId,
+          points: pointsToAdd,
+          totalPoints: pointsToAdd,
+          displayName: `EcoHero ${userId.slice(0, 4)}`,
+          createdAt: serverTimestamp(),
+          lastUpdated: serverTimestamp(),
+        });
+      } else {
+        await updateDoc(userRef, {
+          points: increment(pointsToAdd),
+          totalPoints: increment(pointsToAdd),
+          lastUpdated: serverTimestamp(),
+        });
+      }
+
+      console.log(`Added ${pointsToAdd} points for creating an event`);
+      return true;
+    } catch (error) {
+      console.error("Error adding event creation points:", error);
+      return false;
+    }
+  },
+
+  async joinEvent(userId: string) {
+    try {
+      const userRef = doc(db, "users", userId);
+      const userSnap = await getDoc(userRef);
+      const pointsToAdd = 40;
+
+      if (!userSnap.exists()) {
+        await setDoc(userRef, {
+          uid: userId,
+          points: pointsToAdd,
+          totalPoints: pointsToAdd,
+          displayName: `EcoHero ${userId.slice(0, 4)}`,
+          createdAt: serverTimestamp(),
+          lastUpdated: serverTimestamp(),
+        });
+      } else {
+        await updateDoc(userRef, {
+          points: increment(pointsToAdd),
+          totalPoints: increment(pointsToAdd),
+          lastUpdated: serverTimestamp(),
+        });
+      }
+
+      console.log(`Added ${pointsToAdd} points for joining an event`);
+      return true;
+    } catch (error) {
+      console.error("Error adding event join points:", error);
       return false;
     }
   },

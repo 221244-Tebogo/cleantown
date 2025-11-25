@@ -736,7 +736,6 @@ Format as a structured analysis that can be programmatically parsed.`;
     // Extract summary from AI response (first paragraph)
     const summary = aiResponse.split("\n")[0] + " " + aiResponse.split("\n")[1];
 
-    // Enhanced recommendations combining algorithmic and AI insights
     const enhancedRecommendations = [
       ...algorithmicAnalysis.recommendations,
       ...this.extractAIRecommendations(aiResponse),
@@ -840,7 +839,7 @@ Format as a structured analysis that can be programmatically parsed.`;
     });
 
     return clusters
-      .filter((cluster) => cluster.reportCount > 1) // Only show clusters with multiple reports
+      .filter((cluster) => cluster.reportCount > 1)
       .sort((a, b) => b.reportCount - a.reportCount);
   }
 

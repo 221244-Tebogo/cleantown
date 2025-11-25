@@ -1,3 +1,4 @@
+// src/screens/Analytics.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -58,7 +59,7 @@ export default function AnalyticsScreen() {
   const [fetchingReports, setFetchingReports] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const isBusy = loading || fetchingReports;
 
   const fetchReports = async () => {
@@ -151,24 +152,23 @@ export default function AnalyticsScreen() {
       );
   };
 
-const viewOnMap = (hotspot: any) => {
-  navigation.navigate(
-    'MainTabs' as never,
-    {
-      screen: 'MapShare',
-      params: {
-        focusedLocation: {
-          latitude: hotspot.coordinates.lat,
-          longitude: hotspot.coordinates.lng,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
+  const viewOnMap = (hotspot: any) => {
+    navigation.navigate(
+      'MainTabs' as never,
+      {
+        screen: 'MapShare',
+        params: {
+          focusedLocation: {
+            latitude: hotspot.coordinates.lat,
+            longitude: hotspot.coordinates.lng,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          },
+          hotspotData: hotspot,
         },
-        hotspotData: hotspot,
-      },
-    } as never
-  );
-};
-
+      } as never
+    );
+  };
 
   const getAreaName = (lat: number, lng: number) => {
     if (lat === 0 && lng === 0) return 'Unknown location';
@@ -223,6 +223,24 @@ const viewOnMap = (hotspot: any) => {
 
   return (
     <View style={styles.screen}>
+      <View style={styles.topNavRow}>
+        <Pressable
+          onPress={() =>
+            navigation.navigate(
+              'MainTabs' as never,
+              { screen: 'Profile' } as never
+            )
+          }
+          style={({ pressed }) => [
+            styles.backCircle,
+            pressed && { opacity: 0.75 },
+          ]}
+        >
+          <Text style={styles.backArrow}>‹</Text>
+        </Pressable>
+        <Text style={styles.backLabel}></Text>
+      </View>
+
       <View style={styles.header}>
         <Text style={styles.title}>Analytics HQ</Text>
         <Text style={styles.subtitle}>
@@ -264,14 +282,13 @@ const viewOnMap = (hotspot: any) => {
         </View>
       )}
 
-  
       {patternAnalysis && !isBusy && (
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-         
+          {/* HERO CARD */}
           <View style={styles.heroCard}>
             <View style={styles.heroLeft}>
               <Text style={styles.heroBadge}>CleanTown League • {levelTitle}</Text>
@@ -319,6 +336,7 @@ const viewOnMap = (hotspot: any) => {
             </View>
           </View>
 
+          {/* STATS GRID */}
           <View style={styles.statGrid}>
             <View style={styles.statCard}>
               <View style={styles.statHeaderRow}>
@@ -373,11 +391,13 @@ const viewOnMap = (hotspot: any) => {
             </View>
           </View>
 
+          {/* AI OVERVIEW */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>AI overview</Text>
             <Text style={styles.summaryText}>{patternAnalysis.summary}</Text>
           </View>
 
+          {/* HOTSPOT ZONES */}
           <View style={styles.card}>
             <View style={styles.cardHeaderRow}>
               <Text style={styles.cardTitle}>
@@ -468,6 +488,7 @@ const viewOnMap = (hotspot: any) => {
             ))}
           </View>
 
+          {/* PATTERNS & TIMING */}
           <View style={styles.card}>
             <View style={styles.cardHeaderRow}>
               <Text style={styles.cardTitle}>Patterns & timing</Text>
@@ -489,6 +510,7 @@ const viewOnMap = (hotspot: any) => {
             ))}
           </View>
 
+          {/* AI ACTION PLAN */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>AI action plan</Text>
             {patternAnalysis.recommendations.map((rec: string, index: number) => (
@@ -498,6 +520,7 @@ const viewOnMap = (hotspot: any) => {
             ))}
           </View>
 
+          {/* RECENT MISSIONS */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Recent missions</Text>
 
@@ -551,13 +574,42 @@ function getLevelInfo(missions: number) {
   return { level, currentXP, nextLevelXP, progress };
 }
 
-
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.gradientStart,
     paddingTop: spacing(4),
     paddingHorizontal: spacing(3),
+  },
+
+  // 🔙 TOP NAV BACK TO PROFILE
+  topNavRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    marginBottom: spacing(1.5),
+  },
+  backCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: '#2A7390',
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.sm,
+  },
+  backArrow: {
+    fontSize: 24,
+    color: '#2A7390',
+    marginTop: -2,
+  },
+  backLabel: {
+    ...textStyles.bodySmall,
+    marginLeft: spacing(1),
+    fontFamily: 'Poppins-SemiBold',
+    color: colors.ink,
   },
 
   scroll: {
@@ -582,7 +634,7 @@ const styles = StyleSheet.create({
     color: colors.muted,
     marginTop: 2,
     textAlign: 'center',
-  marginBottom: spacing(1),
+    marginBottom: spacing(1),
   },
   metaText: {
     ...textStyles.bodySmall,

@@ -6,12 +6,12 @@ const testAIConnection = async () => {
   setTesting(true);
   try {
     const connectionTest = await geminiAI.testConnection();
-    setResult(`Connection: ${connectionTest ? '✅ SUCCESS' : '❌ FAILED'}`);
+    setResult(`Connection: ${connectionTest ? 'SUCCESS' : 'FAILED'}`);
     
     if (connectionTest) {
       // Test single report analysis
       const analysis = await geminiAI.analyzeReport("Plastic bottles and food wrappers");
-      setResult(prev => prev + `\nSingle Analysis: ✅ SUCCESS\nCategory: ${analysis.category}`);
+      setResult(prev => prev + `\nSingle Analysis: SUCCESS\nCategory: ${analysis.category}`);
       
       // Test hotspot analysis with sample data
       const sampleReports = [
@@ -32,10 +32,10 @@ const testAIConnection = async () => {
       ];
       
       const hotspotAnalysis = await geminiAI.analyzeHotspots(sampleReports);
-      setResult(prev => prev + `\nHotspot Analysis: ✅ SUCCESS\nFound ${hotspotAnalysis.hotspots.length} hotspots`);
+      setResult(prev => prev + `\nHotspot Analysis: SUCCESS\nFound ${hotspotAnalysis.hotspots.length} hotspots`);
     }
   } catch (error: any) {
-    setResult(`❌ Error: ${error.message}`);
+    setResult(`Error: ${error.message}`);
   } finally {
     setTesting(false);
   }

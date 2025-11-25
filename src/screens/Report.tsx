@@ -36,6 +36,7 @@ import {
 import { pointsActions } from '@/services/points';
 import { geminiAI, AIAnalysis, CleanupSuggestion } from '@/services/geminiAI';
 import { CleanTownModal } from '@/components/CleanTownModal';
+import { playSound, AI_DING_SOUND } from '@/services/sound';
 
 const ICON_AI_BOT = require('../../assets/Ai-bot.png');
 const HERO_MISSION = require('../../assets/Cleaning-hero-flying-t-mission.png');
@@ -53,6 +54,7 @@ const ICON_ANALYTICS = require('../../assets/analytics-icon.png');
 const ICON_COMPLETE = require('../../assets/tick.png');
 const ICON_CAUTION = require('../../assets/caution.png');
 const ICON_REPORT = require('../../assets/report-icon.png');
+const MISSION_SUCCESS_SOUND = require('../../assets/mobile-game-alert-positive-selection-roy.mp3');
 
 const BADGE_BEGINNER = require('../../assets/Beginner-badge.png');
 const BADGE_BRONZE = require('../../assets/Bronze-badge.png');
@@ -118,6 +120,12 @@ export default function ReportModal() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (autoAnalyzed && aiAnalysis) {
+      playSound(AI_DING_SOUND);
+    }
+  }, [autoAnalyzed, aiAnalysis]);
 
   useEffect(() => {
     const uid = auth.currentUser?.uid;
@@ -366,6 +374,7 @@ export default function ReportModal() {
 
       const pointsSuccess = await pointsActions.reportLitter(uid, !!image);
 
+      playSound(MISSION_SUCCESS_SOUND);
       setLastMissionPoints(pointsEarned);
       setShowSuccessModal(true);
 

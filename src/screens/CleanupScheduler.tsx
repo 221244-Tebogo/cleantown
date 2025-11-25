@@ -11,7 +11,7 @@ import {
   Modal,
   Image,
   StyleSheet,
-  Dimensions, 
+  Dimensions,
 } from 'react-native';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -32,6 +32,7 @@ import { colors, spacing, shadows, textStyles, radius } from '@/theme';
 import { pointsActions } from '@/services/points';
 import { CleanTownModal } from '@/components/CleanTownModal';
 import Constants from 'expo-constants';
+import { playSound, BUTTON_PRESS_SOUND, AI_DING_SOUND } from '@/services/sound';
 
 interface CleanupEvent {
   id: string;
@@ -95,7 +96,7 @@ export default function CleanupScheduler() {
   const [searchingPlaces, setSearchingPlaces] = useState(false);
   const [date, setDate] = useState<Date>(
     new Date(Date.now() + 24 * 60 * 60 * 1000)
-  ); // +24 hrs
+  );
   const [showDate, setShowDate] = useState(false);
   const [showTime, setShowTime] = useState(false);
   const [events, setEvents] = useState<CleanupEvent[]>([]);
@@ -104,7 +105,6 @@ export default function CleanupScheduler() {
   const [userTotalPoints, setUserTotalPoints] = useState(0);
 
   const [showFormModal, setShowFormModal] = useState(false);
-
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [confettiKey, setConfettiKey] = useState(0);
 
@@ -217,7 +217,7 @@ export default function CleanupScheduler() {
     return BADGE_BEGINNER;
   };
 
-const fetchPlaceSuggestions = useCallback(
+  const fetchPlaceSuggestions = useCallback(
   async (input: string) => {
     if (!PLACES_API_KEY) {
       console.log('Places API key not available, skipping autocomplete');
@@ -238,7 +238,7 @@ const fetchPlaceSuggestions = useCallback(
       const url =
         'https://maps.googleapis.com/maps/api/place/autocomplete/json' +
         `?input=${encodeURIComponent(input.trim())}` +
-        '&types=geocode' +
+        // removed: '&types=geocode'
         '&language=en' +
         '&components=country:za' +
         `&key=${PLACES_API_KEY}`;
@@ -251,7 +251,11 @@ const fetchPlaceSuggestions = useCallback(
       }
 
       const json = await res.json();
-      console.log('Places API response status:', json.status, json.error_message);
+      console.log(
+        'Places API response status:',
+        json.status,
+        json.error_message
+      );
 
       if (json.status !== 'OK') {
         setPlaceSuggestions([]);
@@ -274,56 +278,57 @@ const fetchPlaceSuggestions = useCallback(
   []
 );
 
-const handleSelectPlace = async (placeId: string, description: string) => {
-  setLocationQuery(description);
-  setLocation(description);
-  setPlaceSuggestions([]);
 
-  if (!PLACES_API_KEY) {
-    console.log('Places API key not available, skipping coordinate lookup');
-    setLocationCoords(null);
-    return;
-  }
+  const handleSelectPlace = async (placeId: string, description: string) => {
+    setLocationQuery(description);
+    setLocation(description);
+    setPlaceSuggestions([]);
 
-  try {
-    setSearchingPlaces(true);
-
-    const url =
-      'https://maps.googleapis.com/maps/api/place/details/json' +
-      `?place_id=${encodeURIComponent(placeId)}` + // <-- important
-      '&fields=geometry/location' +
-      `&key=${PLACES_API_KEY}`;
-
-    console.log('Fetching place details:', url);
-    const res = await fetch(url);
-
-    if (!res.ok) {
-      throw new Error(`HTTP error! status: ${res.status}`);
-    }
-
-    const json = await res.json();
-    console.log('Place details response status:', json.status, json.error_message);
-
-    if (json.status !== 'OK') {
+    if (!PLACES_API_KEY) {
+      console.log('Places API key not available, skipping coordinate lookup');
       setLocationCoords(null);
       return;
     }
 
-    const loc = json.result?.geometry?.location;
-    if (loc?.lat != null && loc?.lng != null) {
-      console.log('Got coordinates:', loc);
-      setLocationCoords({ lat: loc.lat, lng: loc.lng });
-    } else {
-      console.log('No coordinates found in place details');
+    try {
+      setSearchingPlaces(true);
+
+      const url =
+        'https://maps.googleapis.com/maps/api/place/details/json' +
+        `?place_id=${encodeURIComponent(placeId)}` +
+        '&fields=geometry/location' +
+        `&key=${PLACES_API_KEY}`;
+
+      console.log('Fetching place details:', url);
+      const res = await fetch(url);
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
+      const json = await res.json();
+      console.log('Place details response status:', json.status, json.error_message);
+
+      if (json.status !== 'OK') {
+        setLocationCoords(null);
+        return;
+      }
+
+      const loc = json.result?.geometry?.location;
+      if (loc?.lat != null && loc?.lng != null) {
+        console.log('Got coordinates:', loc);
+        setLocationCoords({ lat: loc.lat, lng: loc.lng });
+      } else {
+        console.log('No coordinates found in place details');
+        setLocationCoords(null);
+      }
+    } catch (err) {
+      console.error('Places details fetch failed:', err);
       setLocationCoords(null);
+    } finally {
+      setSearchingPlaces(false);
     }
-  } catch (err) {
-    console.error('Places details fetch failed:', err);
-    setLocationCoords(null);
-  } finally {
-    setSearchingPlaces(false);
-  }
-};
+  };
 
   const createEvent = async () => {
     if (!currentUserId) {
@@ -366,9 +371,12 @@ const handleSelectPlace = async (placeId: string, description: string) => {
 
       await addDoc(collection(db, 'cleanupEvents'), eventData);
 
-      if ((pointsActions as any)?.createEvent) {
-        await (pointsActions as any).createEvent(currentUserId);
-      }
+if (pointsActions.createEvent) {
+  await pointsActions.createEvent(currentUserId);
+}
+
+
+      playSound(AI_DING_SOUND);
 
       setShowSuccessModal(true);
       setConfettiKey((k) => k + 1);
@@ -407,9 +415,10 @@ const handleSelectPlace = async (placeId: string, description: string) => {
           declined: arrayRemove(currentUserId),
         });
 
-        if ((pointsActions as any)?.joinEvent) {
-          await (pointsActions as any).joinEvent(currentUserId);
-        }
+if (pointsActions.joinEvent) {
+  await pointsActions.joinEvent(currentUserId);
+}
+
 
         Alert.alert('Joined', "You're on this mission.");
       } else {
@@ -449,7 +458,7 @@ const handleSelectPlace = async (placeId: string, description: string) => {
     0,
     eventsJoinedByUser - eventsCreatedByUser
   );
-  const estimatedXP = eventsCreatedByUser * 50 + joinedButNotCreated * 30;
+const estimatedXP = eventsCreatedByUser * 80 + joinedButNotCreated * 40;
 
   return (
     <View style={styles.screen}>
@@ -506,8 +515,7 @@ const handleSelectPlace = async (placeId: string, description: string) => {
                   }}
                   style={styles.fieldInput}
                   placeholder={
-                    PLACES_API_KEY 
-                      ? "Search location…" : "Enter location"
+                    PLACES_API_KEY ? 'Search location…' : 'Enter location'
                   }
                   placeholderTextColor={colors.muted}
                   autoCorrect={false}
@@ -582,7 +590,10 @@ const handleSelectPlace = async (placeId: string, description: string) => {
             )}
 
             <Pressable
-              onPress={createEvent}
+              onPress={() => {
+                playSound(BUTTON_PRESS_SOUND);
+                createEvent();
+              }}
               style={styles.launchButton}
               disabled={creating}
             >
@@ -644,7 +655,10 @@ const handleSelectPlace = async (placeId: string, description: string) => {
         <View style={styles.tileRow}>
           <Pressable
             style={styles.tile}
-            onPress={() => setShowFormModal(true)}
+            onPress={() => {
+              playSound(BUTTON_PRESS_SOUND);
+              setShowFormModal(true);
+            }}
           >
             <Image source={ICON_LAUNCH} style={styles.tileIcon} />
             <View>
@@ -709,7 +723,10 @@ const handleSelectPlace = async (placeId: string, description: string) => {
               </Text>
               <Pressable
                 style={styles.successButton}
-                onPress={() => setShowFormModal(true)}
+                onPress={() => {
+                  playSound(BUTTON_PRESS_SOUND);
+                  setShowFormModal(true);
+                }}
               >
                 <Text style={styles.successButtonText}>Start a mission</Text>
               </Pressable>
@@ -812,7 +829,7 @@ const handleSelectPlace = async (placeId: string, description: string) => {
                         ]}
                       >
                         {userStatus === 'confirmed'
-                          ? "You're in" 
+                          ? "You're in"
                           : 'You skipped this mission'}
                       </Text>
                     </View>
@@ -856,7 +873,6 @@ const handleSelectPlace = async (placeId: string, description: string) => {
         </View>
       </ScrollView>
 
-      {/* SUCCESS MODAL */}
       <Modal
         visible={showSuccessModal}
         transparent
@@ -888,7 +904,10 @@ const handleSelectPlace = async (placeId: string, description: string) => {
           </View>
 
           <Pressable
-            onPress={() => setShowSuccessModal(false)}
+            onPress={() => {
+              playSound(BUTTON_PRESS_SOUND);
+              setShowSuccessModal(false);
+            }}
             style={styles.successButton}
           >
             <Text style={styles.successButtonText}>Great!</Text>
@@ -1206,7 +1225,7 @@ const styles = StyleSheet.create({
 
   upcomingTitle: {
     fontFamily: 'CherryBomb-One',
-    fontSize: 16,     
+    fontSize: 16,
     color: '#2A7390',
   },
   missionTitleText: {
@@ -1273,7 +1292,7 @@ const styles = StyleSheet.create({
     ...textStyles.bodySmall,
     color: colors.muted,
   },
-  
+
   missionMeta: {
     ...textStyles.bodySmall,
     color: colors.muted,

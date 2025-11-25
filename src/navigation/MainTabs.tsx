@@ -9,6 +9,7 @@ import CleanupScheduler from '@/screens/CleanupScheduler';
 import Profile from '@/screens/Profile';
 
 import { colors, fonts } from '@/theme';
+import { playSound, BUTTON_PRESS_SOUND } from '@/services/sound';
 
 export type TabParamList = {
   MapShare: undefined;
@@ -34,6 +35,10 @@ const TabIcon = ({ source, focused }: { source: any; focused: boolean }) => (
 );
 
 export default function MainTabs() {
+  const handleTabPress = () => {
+    playSound(BUTTON_PRESS_SOUND);
+  };
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -84,6 +89,11 @@ export default function MainTabs() {
             />
           ),
         }}
+        listeners={{
+          tabPress: () => {
+            handleTabPress();
+          },
+        }}
       />
 
       <Tab.Screen
@@ -97,6 +107,11 @@ export default function MainTabs() {
               focused={focused}
             />
           ),
+        }}
+        listeners={{
+          tabPress: () => {
+            handleTabPress();
+          },
         }}
       />
 
@@ -112,6 +127,11 @@ export default function MainTabs() {
             />
           ),
         }}
+        listeners={{
+          tabPress: () => {
+            handleTabPress();
+          },
+        }}
       />
 
       <Tab.Screen
@@ -126,6 +146,11 @@ export default function MainTabs() {
             />
           ),
         }}
+        listeners={{
+          tabPress: () => {
+            handleTabPress();
+          },
+        }}
       />
 
       <Tab.Screen
@@ -139,6 +164,11 @@ export default function MainTabs() {
               focused={focused}
             />
           ),
+        }}
+        listeners={{
+          tabPress: () => {
+            handleTabPress();
+          },
         }}
       />
     </Tab.Navigator>
